@@ -46,7 +46,7 @@ You do **not** implement these in the host app:
 
 Your job is three verbs: **add the dependency → `initialize` → `attach`.**
 
-```mermaid
+```mermaid id="jhrv7d"
 flowchart LR
   A[Application.onCreate] -->|initialize| B[SDK ready]
   B --> C[Host Activity]
@@ -73,8 +73,6 @@ dependencyResolutionManagement {
     }
 }
 ```
-
-Do **not** add `google-services.json` or the Google Services plugin for this SDK. Firebase is initialized inside the SDK.
 
 ---
 
@@ -128,10 +126,6 @@ class App : Application() {
 ```
 
 `initialize` stores options and starts the engine. It does **not** scan, prompt, or pair until a screen calls `attach`.
-
-On first launch the SDK registers your host `applicationId` for access. If that package is later set to `false`, every feature stops and the user sees:
-
-> This app has been revoked from using Provisioner Jat SDK.
 
 ---
 
@@ -253,7 +247,6 @@ Or call `client.submitPairingCode("123456")` / `client.dismissPairing()`.
 * [ ] `Application` registered, `initialize` in `onCreate`
 * [ ] `attach` / `detach` on every provisioning Activity
 * [ ] **No** `USB_DEVICE_ATTACHED` on your Activity
-* [ ] **No** `google-services.json` required for this SDK
 * [ ] Physical USB host and/or Android 11+ wireless debugging on the target device
 
 The first USB attach still needs the user to tap **Allow** on the device. Wireless still needs Wireless debugging + the six-digit code. The SDK does not bypass ADB authorization or Android enterprise policy.
