@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>PROVISIONER JATT SDK</strong><br/>
-  <em>USB + wireless ADB provisioning, packed as one drop-in AAR.</em>
+  <em>USB + wireless ADB provisioning, packed as one drop-in SDK.</em>
 </p>
 
 <p align="center">
@@ -22,14 +22,17 @@
 
 ## Artifact
 
-| | |
-| --- | --- |
-| File | `provisioner-jatt-sdk-1.0.0.aar` |
-| Version | **1.0.0** |
-| Namespace | `com.beastblocks.provisionerjattsdk` |
-| Entry point | `ProvisionerJatt` |
+|              |                                                           |
+| ------------ | --------------------------------------------------------- |
+| Distribution | **JitPack**                                               |
+| Version      | **1.0.0**                                                 |
+| Dependency   | `com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.0.0` |
+| Namespace    | `com.beastblocks.provisionerjattsdk`                      |
+| Entry point  | `ProvisionerJatt`                                         |
 
-This folder is the distribution kit: the AAR, this guide, and the brand mark.
+The SDK is published through JitPack. You do **not** need to download or manually copy an AAR into your project.
+
+Gradle resolves the SDK and its published artifact automatically from JitPack.
 
 ---
 
@@ -37,16 +40,16 @@ This folder is the distribution kit: the AAR, this guide, and the brand mark.
 
 You do **not** implement these in the host app:
 
-| Built in | You never write |
-| --- | --- |
-| USB ADB + Android 11+ wireless TLS ADB | Connection state machines |
-| `UsbAttachedReceiver` + device filter | `USB_DEVICE_ATTACHED` on your Activity |
-| USB permission + nearby Wi-Fi / location prompts | Permission plumbing |
-| Six-digit wireless pairing overlay | Pairing Activity |
-| Auto-connect USB and remembered wireless | Reconnect loops |
-| Serial lock, scan, make owner, automate DPC | ADB shell scripts |
+| Built in                                         | You never write                        |
+| ------------------------------------------------ | -------------------------------------- |
+| USB ADB + Android 11+ wireless TLS ADB           | Connection state machines              |
+| `UsbAttachedReceiver` + device filter            | `USB_DEVICE_ATTACHED` on your Activity |
+| USB permission + nearby Wi-Fi / location prompts | Permission plumbing                    |
+| Six-digit wireless pairing overlay               | Pairing Activity                       |
+| Auto-connect USB and remembered wireless         | Reconnect loops                        |
+| Serial lock, scan, make owner, automate DPC      | ADB shell scripts                      |
 
-Your job is three verbs: **drop the AAR → `initialize` → `attach`.**
+Your job is three verbs: **add the dependency → `initialize` → `attach`.**
 
 ```mermaid
 flowchart LR
@@ -61,23 +64,9 @@ flowchart LR
 
 # Integration — six beats
 
-### 1. Drop the AAR
+### 1. Add the JitPack repository
 
-Copy `provisioner-jatt-sdk-1.0.0.aar` into your app module:
-
-```
-app/
-  libs/
-    provisioner-jatt-sdk-1.0.0.aar
-```
-
-Optional: copy `example/src/main/res/drawable/logo_provisioner.png` into your `app/src/main/res/drawable/` as `logo_provisioner.png` if you want it on the pairing dialog.
-
----
-
-### 2. Unlock the repositories
-
-The AAR is a binary. Gradle still needs Google, Maven Central, and JitPack so its companion libraries can resolve (Compose, Firebase Database, SPAKE2, Conscrypt).
+The SDK is distributed through JitPack, so add JitPack to your project's repository configuration.
 
 `settings.gradle.kts`
 
@@ -92,11 +81,13 @@ dependencyResolutionManagement {
 }
 ```
 
-Do **not** add `google-services.json` or the Google Services plugin for this SDK. Firebase is initialized inside the AAR.
+Do **not** add `google-services.json` or the Google Services plugin for this SDK. Firebase is initialized inside the SDK.
 
 ---
 
-### 3. Depend on the AAR + its companions
+### 2. Add the SDK dependency
+
+Add the published SDK directly to your app module.
 
 `app/build.gradle.kts`
 
@@ -108,37 +99,26 @@ android {
 }
 
 dependencies {
-    implementation(files("libs/provisioner-jatt-sdk-1.0.0.aar"))
-
-    implementation("androidx.core:core-ktx:1.10.1")
-    implementation("androidx.activity:activity-compose:1.8.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-
-    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
-
-    implementation("com.google.dagger:dagger:2.52")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-database")
-    implementation("com.github.MuntashirAkon.spake2-java:spake2-android:2.2.1")
-    implementation("org.conscrypt:conscrypt-android:2.5.3")
-    implementation("org.bouncycastle:bcprov-jdk15to18:1.81")
-    implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
+    implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.0.0")
 }
 ```
 
-A raw AAR has no Maven POM. Those companions must be declared on the host, or the app will crash when USB, pairing, or the access check runs.
+You do **not** need to:
 
-`INTERNET`, USB host, and nearby-network permissions **merge from the AAR**. Do not put `USB_DEVICE_ATTACHED` on your Activity — the library receiver owns that filter.
+* Download the AAR manually
+* Create an `app/libs` folder
+* Copy an AAR into `libs`
+* Use `implementation(files(...))`
+
+Gradle retrieves the SDK from JitPack.
+
+The SDK is published as an AAR through JitPack, and its required Maven dependencies are resolved through the configured repositories.
+
+`INTERNET`, USB host, and nearby-network permissions **merge from the SDK**. Do not put `USB_DEVICE_ATTACHED` on your Activity — the library receiver owns that filter.
 
 ---
 
-### 4. Wake the SDK in `Application`
+### 3. Wake the SDK in `Application`
 
 ```kotlin
 import com.beastblocks.provisionerjattsdk.ProvisionerJatt
@@ -173,7 +153,7 @@ On first launch the SDK registers your host `applicationId` for access. If that 
 
 ---
 
-### 5. Attach every provisioning screen
+### 4. Attach every provisioning screen
 
 Pairing, permissions, and auto-connect run only on Activities you attach. Use the same window the user is looking at — the SDK never starts its own Activity.
 
@@ -197,12 +177,12 @@ class ProvisionerActivity : ComponentActivity() {
 }
 ```
 
-| Call | When |
-| --- | --- |
-| `attach(activity)` | `onCreate` of a host screen |
-| `detach(activity)` | `onDestroy` of that same screen |
-| `resetSession()` | Drop live ADB and start clean without leaving |
-| `isSessionActive()` | Whether a host is currently live |
+| Call                | When                                          |
+| ------------------- | --------------------------------------------- |
+| `attach(activity)`  | `onCreate` of a host screen                   |
+| `detach(activity)`  | `onDestroy` of that same screen               |
+| `resetSession()`    | Drop live ADB and start clean without leaving |
+| `isSessionActive()` | Whether a host is currently live              |
 
 Switching between attached screens does **not** re-`initialize`. Detach removes only that screen. When the last host is gone, the live session resets.
 
@@ -214,7 +194,7 @@ val client = ProvisionerJatt.get()
 
 ---
 
-### 6. Automate — or just listen
+### 5. Automate — or just listen
 
 **Hands-off provisioning** (package + HTTPS APK URL required, serial optional):
 
@@ -238,7 +218,6 @@ lifecycleScope.launch {
 }
 lifecycleScope.launch {
     client.connectedDevices.collect { /* show ready devices */ }
-}
 ```
 
 Automation and pairing still run if you never collect a single flow.
@@ -285,14 +264,17 @@ Or call `client.submitPairingCode("123456")` / `client.dismissPairing()`.
 
 ## Host checklist
 
-- [ ] `minSdk` 26+
-- [ ] AAR in `app/libs/` plus companion dependencies
-- [ ] `google()`, `mavenCentral()`, `jitpack.io`
-- [ ] `Application` registered, `initialize` in `onCreate`
-- [ ] `attach` / `detach` on every provisioning Activity
-- [ ] **No** `USB_DEVICE_ATTACHED` on your Activity
-- [ ] **No** `google-services.json` required for this SDK
-- [ ] Physical USB host and/or Android 11+ wireless debugging on the target device
+* [ ] `minSdk` 26+
+* [ ] JitPack repository added
+* [ ] SDK dependency added: `com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.0.0`
+* [ ] `google()` and `mavenCentral()` configured
+* [ ] `Application` registered, `initialize` in `onCreate`
+* [ ] `attach` / `detach` on every provisioning Activity
+* [ ] **No** `USB_DEVICE_ATTACHED` on your Activity
+* [ ] **No** `google-services.json` required for this SDK
+* [ ] Physical USB host and/or Android 11+ wireless debugging on the target device
+
+You do **not** need to manually download or add an AAR to `app/libs`.
 
 The first USB attach still needs the user to tap **Allow** on the device. Wireless still needs Wireless debugging + the six-digit code. The SDK does not bypass ADB authorization or Android enterprise policy.
 
