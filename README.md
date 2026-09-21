@@ -22,17 +22,12 @@
 
 ## Artifact
 
-|              |                                                           |
-| ------------ | --------------------------------------------------------- |
-| Distribution | **JitPack**                                               |
-| Version      | **1.0.0**                                                 |
-| Dependency   | `com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.0.0` |
-| Namespace    | `com.beastblocks.provisionerjattsdk`                      |
-| Entry point  | `ProvisionerJatt`                                         |
-
-The SDK is published through JitPack. You do **not** need to download or manually copy an AAR into your project.
-
-Gradle resolves the SDK and its published artifact automatically from JitPack.
+|             |                                                           |
+| ----------- | --------------------------------------------------------- |
+| Version     | **1.0.0**                                                 |
+| Dependency  | `com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.0.0` |
+| Namespace   | `com.beastblocks.provisionerjattsdk`                      |
+| Entry point | `ProvisionerJatt`                                         |
 
 ---
 
@@ -62,11 +57,9 @@ flowchart LR
 
 ---
 
-# Integration — six beats
+# Integration — five beats
 
 ### 1. Add the JitPack repository
-
-The SDK is distributed through JitPack, so add JitPack to your project's repository configuration.
 
 `settings.gradle.kts`
 
@@ -87,8 +80,6 @@ Do **not** add `google-services.json` or the Google Services plugin for this SDK
 
 ### 2. Add the SDK dependency
 
-Add the published SDK directly to your app module.
-
 `app/build.gradle.kts`
 
 ```kotlin
@@ -103,16 +94,7 @@ dependencies {
 }
 ```
 
-You do **not** need to:
-
-* Download the AAR manually
-* Create an `app/libs` folder
-* Copy an AAR into `libs`
-* Use `implementation(files(...))`
-
-Gradle retrieves the SDK from JitPack.
-
-The SDK is published as an AAR through JitPack, and its required Maven dependencies are resolved through the configured repositories.
+The SDK's required dependencies are resolved through the configured repositories.
 
 `INTERNET`, USB host, and nearby-network permissions **merge from the SDK**. Do not put `USB_DEVICE_ATTACHED` on your Activity — the library receiver owns that filter.
 
@@ -273,8 +255,6 @@ Or call `client.submitPairingCode("123456")` / `client.dismissPairing()`.
 * [ ] **No** `USB_DEVICE_ATTACHED` on your Activity
 * [ ] **No** `google-services.json` required for this SDK
 * [ ] Physical USB host and/or Android 11+ wireless debugging on the target device
-
-You do **not** need to manually download or add an AAR to `app/libs`.
 
 The first USB attach still needs the user to tap **Allow** on the device. Wireless still needs Wireless debugging + the six-digit code. The SDK does not bypass ADB authorization or Android enterprise policy.
 
