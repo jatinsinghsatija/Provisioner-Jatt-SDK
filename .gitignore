@@ -1,0 +1,14 @@
+# Gradle / IDE
+*.iml
+.gradle
+.idea/
+.DS_Store
+/build
+**/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# SDK source — not versioned. Ship the AAR from dist/ instead.
+/provisioner-jatt/
