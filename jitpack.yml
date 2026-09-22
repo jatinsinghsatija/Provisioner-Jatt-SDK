@@ -1,4 +1,0 @@
-jdk:
-  - openjdk17
-install:
-  - ./gradlew :provisioner-jatt:publishToMavenLocal --no-daemon --stacktrace -x test -x lint
