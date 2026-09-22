@@ -1,3 +1,4 @@
+# SDK source is not on GitHub. Publish the AAR + POM already in repo/.
 install:
   - mkdir -p ~/.m2/repository
   - cp -R repo/com ~/.m2/repository/

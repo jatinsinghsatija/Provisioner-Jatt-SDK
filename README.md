@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="v1.1.0" src="https://img.shields.io/badge/version-v1.1.0-FF8A00?style=for-the-badge&labelColor=000000"/>
+  <img alt="v1.1.1" src="https://img.shields.io/badge/version-v1.1.1-FF8A00?style=for-the-badge&labelColor=000000"/>
   <img alt="Min SDK 26" src="https://img.shields.io/badge/minSdk-26-FFCC00?style=for-the-badge&labelColor=000000"/>
   <img alt="JitPack" src="https://img.shields.io/badge/distribute-JitPack%20AAR%20%2B%20POM-white?style=for-the-badge&labelColor=000000"/>
   <img alt="Package" src="https://img.shields.io/badge/package-com.beastblocks.provisionerjattsdk-white?style=for-the-badge&labelColor=000000"/>
@@ -48,12 +48,6 @@ flowchart LR
   C -->|detach| E[This screen stops]
   E -->|last host gone| F[Session reset]
 ```
-
-This guide is for **v1.1.0 after JitPack publish**. The artifact is an AAR plus a POM. Hosts declare **one** dependency. Replace `YOUR_GITHUB_USER` / `YOUR_REPO` with the GitHub coordinates JitPack shows for tag `v1.1.0`.
-
-If the JitPack build page lists a submodule coordinate, use:
-
-`com.github.YOUR_GITHUB_USER.YOUR_REPO:provisioner-jatt:v1.1.0`
 
 Every snippet below has a **Kotlin** tab and a **Java** tab (Gradle Groovy for Java apps). Expand the language you ship.
 
@@ -114,7 +108,7 @@ android {
 }
 
 dependencies {
-    implementation("com.github.YOUR_GITHUB_USER:YOUR_REPO:v1.1.0")
+    implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.1.1")
 }
 ```
 
@@ -131,7 +125,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.github.YOUR_GITHUB_USER:YOUR_REPO:v1.1.0'
+    implementation 'com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.1.1'
 }
 ```
 
@@ -837,7 +831,7 @@ public class PagerProvisionerFragment extends Fragment {
 ## Host checklist
 
 - [ ] `minSdk` 26+
-- [ ] JitPack `implementation("com.github.YOUR_GITHUB_USER:YOUR_REPO:v1.1.0")` — one line, POM included
+- [ ] JitPack `implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.1.1")` — one line, POM included
 - [ ] `google()`, `mavenCentral()`, `jitpack.io`
 - [ ] `Application` registered, `initialize` in `onCreate`
 - [ ] `attach(activity, lifecycleOwner)` **or** `scanThenAttach(activity, lifecycleOwner)` on every provisioning Activity or Fragment
@@ -851,5 +845,5 @@ The first USB attach still needs the user to tap **Allow** on the device. Wirele
 <p align="center">
   <img src="example/src/main/res/drawable/logo_provisioner.png" alt="Provisioner Jatt" width="96"/>
   <br/>
-  <sub>Provisioner Jatt SDK · v1.1.0 · <code>com.beastblocks.provisionerjattsdk</code></sub>
+  <sub>Provisioner Jatt SDK · v1.1.1 · <code>com.beastblocks.provisionerjattsdk</code></sub>
 </p>
