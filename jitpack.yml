@@ -1,4 +1,4 @@
-jdk:
-  - openjdk17
 install:
-  - ./gradlew :provisioner-jatt:publishToMavenLocal --no-daemon --stacktrace -x test -x lint
+  - mkdir -p ~/.m2/repository
+  - cp -R repo/com ~/.m2/repository/
+  - ls -R ~/.m2/repository/com/beastblocks/provisioner-jatt
