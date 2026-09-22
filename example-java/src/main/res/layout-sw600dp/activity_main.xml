@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/provisioner_screen"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/brand_white"
+    android:fitsSystemWindows="true"
+    android:tag="provisioner_screen">
+
+    <ImageView
+        android:layout_width="320dp"
+        android:layout_height="320dp"
+        android:layout_gravity="center"
+        android:alpha="0.08"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/logo_provisioner" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_toolbar"
+            android:elevation="5dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp">
+
+            <ImageView
+                android:id="@+id/toolbar_logo"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop"
+                android:src="@drawable/logo_provisioner" />
+
+            <TextView
+                android:id="@+id/toolbar_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:text="@string/app_name"
+                android:textColor="@color/brand_black"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_automate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:tag="automate_provisioning"
+                android:text="@string/automate_provisioning"
+                android:textAllCaps="false"
+                android:textColor="@color/brand_orange" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <LinearLayout
+                android:id="@+id/serial_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:tag="serial_lock_banner"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/serial_banner_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/brand_orange"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/serial_banner_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/serial_lock_body"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="16dp"
+                android:layout_weight="1"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/title_discovered"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/brand_orange"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:text="Discovered  0" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginTop="14dp">
+
+                        <LinearLayout
+                            android:id="@+id/empty_discovered"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_card"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical"
+                            android:padding="24dp"
+                            android:tag="devices_empty">
+
+                            <ProgressBar
+                                android:id="@+id/empty_discovered_progress"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:indeterminateTint="@color/brand_orange"
+                                android:visibility="gone" />
+
+                            <TextView
+                                android:id="@+id/empty_discovered_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:textColor="@color/brand_black"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/empty_discovered_body"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:gravity="center"
+                                android:text="@string/empty_discovered_body" />
+                        </LinearLayout>
+
+                        <ScrollView
+                            android:id="@+id/list_discovered_scroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:id="@+id/list_discovered"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical" />
+                        </ScrollView>
+                    </FrameLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="24dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/title_connected"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/brand_orange"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:text="Connected  0" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginTop="14dp">
+
+                        <LinearLayout
+                            android:id="@+id/empty_connected"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_card"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical"
+                            android:padding="24dp"
+                            android:tag="connected_empty">
+
+                            <ProgressBar
+                                android:id="@+id/empty_connected_progress"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:indeterminateTint="@color/brand_orange"
+                                android:visibility="gone" />
+
+                            <TextView
+                                android:id="@+id/empty_connected_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="@string/empty_connected_title"
+                                android:textColor="@color/brand_black"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/empty_connected_body"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:gravity="center"
+                                android:text="@string/empty_connected_body" />
+                        </LinearLayout>
+
+                        <ScrollView
+                            android:id="@+id/list_connected_scroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:visibility="gone">
+
+                            <LinearLayout
+                                android:id="@+id/list_connected"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical" />
+                        </ScrollView>
+                    </FrameLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

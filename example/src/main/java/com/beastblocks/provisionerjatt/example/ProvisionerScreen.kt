@@ -78,7 +78,11 @@ private val ListingWatermark = R.drawable.logo_provisioner
 @Composable
 fun ProvisionerScreen(
     state: ProvisionerUiState,
-    onSaveAutomation: (String, String, String) -> Boolean,
+    onScanThenAttach: () -> Unit = {},
+    onSaveAutomation: (String, String) -> Boolean,
+    onSetSerial: (String) -> Boolean,
+    onClearAutomation: () -> Boolean,
+    onClearSerial: () -> Boolean,
     onScan: (DeviceId) -> Unit,
     onMakeOwner: (DeviceId, DpcComponent) -> Unit,
     onRemoveOwner: (DeviceId, DpcComponent) -> Unit,
@@ -127,6 +131,17 @@ fun ProvisionerScreen(
                     },
                     actions = {
                         TextButton(
+                            onClick = onScanThenAttach,
+                            modifier = Modifier.testTag("scan_then_attach"),
+                        ) {
+                            Text(
+                                "Nearby/USB",
+                                color = colors.accent,
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                            )
+                        }
+                        TextButton(
                             onClick = { automationSheetOpen = true },
                             modifier = Modifier.testTag("automate_provisioning"),
                         ) {
@@ -158,7 +173,7 @@ fun ProvisionerScreen(
                         discovered = discovered,
                         connected = connected,
                         scanning = state.scanning,
-                        automationConfigured = state.settings.automationConfigured,
+                        settings = state.settings,
                         onScan = onScan,
                         onMakeOwner = onMakeOwner,
                         onRemoveOwner = onRemoveOwner,
@@ -178,6 +193,9 @@ fun ProvisionerScreen(
                                 connectedCount = connected.size,
                                 onSelect = { selectedTab = it },
                             )
+                        }
+                        if (state.settings.hasSerialFilter) {
+                            item { SerialLockBanner(settings = state.settings) }
                         }
                         if (visible.isEmpty()) {
                             item {
@@ -215,12 +233,20 @@ fun ProvisionerScreen(
                 AutomationSheet(
                     settings = state.settings,
                     onSave = { packageName, apkUrl, serialNumber ->
-                        if (onSaveAutomation(packageName, apkUrl, serialNumber)) {
+                        val autoOk = onSaveAutomation(packageName, apkUrl)
+                        val serialOk = onSetSerial(serialNumber)
+                        if (autoOk && serialOk) {
                             automationSheetOpen = false
                             true
                         } else {
                             false
                         }
+                    },
+                    onClearAutomation = {
+                        if (onClearAutomation()) automationSheetOpen = false
+                    },
+                    onClearSerial = {
+                        if (onClearSerial()) automationSheetOpen = false
                     },
                 )
             }
@@ -234,45 +260,50 @@ private fun WideDeviceLists(
     discovered: List<DeviceUiState>,
     connected: List<DeviceUiState>,
     scanning: Boolean,
-    automationConfigured: Boolean,
+    settings: ProvisioningSettings,
     onScan: (DeviceId) -> Unit,
     onMakeOwner: (DeviceId, DpcComponent) -> Unit,
     onRemoveOwner: (DeviceId, DpcComponent) -> Unit,
     onRetryProvisioning: (DeviceId) -> Unit,
     onDisconnectWireless: (DeviceId) -> Unit,
 ) {
-    Row(
-        modifier = modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        DevicePane(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            title = "Discovered",
-            count = discovered.size,
-            devices = discovered,
-            emptyTab = DeviceListTab.DISCOVERED,
-            scanning = scanning,
-            automationConfigured = automationConfigured,
-            onScan = onScan,
-            onMakeOwner = onMakeOwner,
-            onRemoveOwner = onRemoveOwner,
-            onRetryProvisioning = onRetryProvisioning,
-            onDisconnectWireless = onDisconnectWireless,
-        )
-        DevicePane(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            title = "Connected",
-            count = connected.size,
-            devices = connected,
-            emptyTab = DeviceListTab.CONNECTED,
-            scanning = scanning,
-            automationConfigured = automationConfigured,
-            onScan = onScan,
-            onMakeOwner = onMakeOwner,
-            onRemoveOwner = onRemoveOwner,
-            onRetryProvisioning = onRetryProvisioning,
-            onDisconnectWireless = onDisconnectWireless,
-        )
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (settings.hasSerialFilter) {
+            SerialLockBanner(settings = settings)
+        }
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            DevicePane(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                title = "Discovered",
+                count = discovered.size,
+                devices = discovered,
+                emptyTab = DeviceListTab.DISCOVERED,
+                scanning = scanning,
+                automationConfigured = settings.automationConfigured,
+                onScan = onScan,
+                onMakeOwner = onMakeOwner,
+                onRemoveOwner = onRemoveOwner,
+                onRetryProvisioning = onRetryProvisioning,
+                onDisconnectWireless = onDisconnectWireless,
+            )
+            DevicePane(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                title = "Connected",
+                count = connected.size,
+                devices = connected,
+                emptyTab = DeviceListTab.CONNECTED,
+                scanning = scanning,
+                automationConfigured = settings.automationConfigured,
+                onScan = onScan,
+                onMakeOwner = onMakeOwner,
+                onRemoveOwner = onRemoveOwner,
+                onRetryProvisioning = onRetryProvisioning,
+                onDisconnectWireless = onDisconnectWireless,
+            )
+        }
     }
 }
 
@@ -386,6 +417,8 @@ private fun DeviceListTabs(
 private fun AutomationSheet(
     settings: ProvisioningSettings,
     onSave: (String, String, String) -> Boolean,
+    onClearAutomation: () -> Unit,
+    onClearSerial: () -> Unit,
 ) {
     var packageName by remember { mutableStateOf(settings.packageName) }
     var apkUrl by remember { mutableStateOf(settings.apkUrl) }
@@ -394,7 +427,8 @@ private fun AutomationSheet(
     val urlValid = ProvisioningSettings.isValidDownloadUrl(apkUrl)
     val packageFilled = packageName.isNotBlank()
     val urlFilled = apkUrl.isNotBlank()
-    val canSave = packageValid && urlValid && packageFilled && urlFilled
+    val canSave = (packageValid && urlValid && packageFilled && urlFilled) ||
+        (serialNumber.isNotBlank() && !packageFilled && !urlFilled)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -406,7 +440,7 @@ private fun AutomationSheet(
     ) {
         Text("Automate provisioning", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-            "Save a valid package name and https download URL. Serial number is optional: when set, only that device is listed, paired, and connected.",
+            "Package + https URL automate DPC install. Serial is independent: when set, only that device is discovered, paired, and connected. After pairing, the SDK shows a connected-device dialog with live steps, or the DPC list if automation is off.",
             style = MaterialTheme.typography.bodySmall,
             color = NeumorphicTheme.colors.textSecondary,
         )
@@ -456,7 +490,7 @@ private fun AutomationSheet(
             label = { Text("Serial No") },
             singleLine = true,
             supportingText = {
-                Text("Optional. Leave blank to allow any device.")
+                Text("Optional. Leave blank to allow any device. Required for the SDK connected-device dialog.")
             },
             shape = RoundedCornerShape(14.dp),
             colors = neumorphicTextFieldColors(),
@@ -468,19 +502,53 @@ private fun AutomationSheet(
         ) { Text("Save") }
         if (settings.automationConfigured) {
             TextButton(
-                onClick = { onSave("", "", "") },
+                onClick = onClearAutomation,
                 modifier = Modifier.fillMaxWidth().testTag("clear_automation"),
             ) {
                 Text("Turn off automation")
             }
             Text(
-                if (settings.serialNumber.isNotBlank()) {
+                if (settings.hasSerialFilter) {
                     "Automation is on for the device with serial ${settings.serialNumber}."
                 } else {
                     "Automation is on for every newly connected device."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = NeumorphicTheme.colors.success,
+            )
+        }
+        if (settings.hasSerialFilter) {
+            TextButton(
+                onClick = onClearSerial,
+                modifier = Modifier.fillMaxWidth().testTag("clear_serial"),
+            ) {
+                Text("Clear serial lock")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SerialLockBanner(settings: ProvisioningSettings) {
+    NeumorphicSurface(
+        modifier = Modifier.fillMaxWidth().testTag("serial_lock_banner"),
+        shape = RoundedCornerShape(16.dp),
+        selected = true,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                "Serial lock  ${settings.serialNumber}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = NeumorphicTheme.colors.accent,
+            )
+            Text(
+                "Only this device can be discovered, paired, and connected. After pairing and authorization, the SDK connected-device dialog tracks provisioning or DPC actions.",
+                style = MaterialTheme.typography.bodySmall,
+                color = NeumorphicTheme.colors.textSecondary,
             )
         }
     }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_white">#FFFFFF</color>
+    <color name="brand_black">#000000</color>
+    <color name="brand_orange">#FF8A00</color>
+    <color name="brand_yellow">#FFCC00</color>
+    <color name="brand_yellow_pressed">#47FFCC00</color>
+    <color name="text_secondary">#9E000000</color>
+    <color name="outline">#47000000</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="watermark_scrim">#14FFFFFF</color>
+</resources>

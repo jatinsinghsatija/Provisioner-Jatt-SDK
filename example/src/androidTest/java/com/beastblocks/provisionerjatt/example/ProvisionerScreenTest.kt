@@ -18,7 +18,11 @@ import com.beastblocks.provisionerjattsdk.domain.DpcComponent
 import com.beastblocks.provisionerjattsdk.domain.ProvisioningSettings
 import com.beastblocks.provisionerjattsdk.domain.ProvisioningStage
 import com.beastblocks.provisionerjattsdk.domain.TransportKind
-import com.beastblocks.provisionerjatt.example.ProvisionerScreen
+import com.beastblocks.provisionerjattsdk.ui.DefaultPairingDialog
+import com.beastblocks.provisionerjattsdk.ui.DeviceUiState
+import com.beastblocks.provisionerjattsdk.ui.ManualDeviceState
+import com.beastblocks.provisionerjattsdk.ui.ProvisionerJattTheme
+import com.beastblocks.provisionerjattsdk.ui.ProvisionerUiState
 import org.junit.Rule
 import org.junit.Test
 
@@ -85,6 +89,20 @@ class ProvisionerScreenTest {
         compose.onNodeWithTag("serial_number").assertTextContains("10BD4L11A5001N9")
         compose.onNodeWithTag("save_automation").assertIsEnabled()
         compose.onNodeWithTag("clear_automation").assertIsDisplayed()
+        compose.onNodeWithTag("clear_serial").assertIsDisplayed()
+    }
+
+    @Test fun serialLockBannerShownWhenSerialIsSet() {
+        compose.setContent {
+            TestScreen(
+                ProvisionerUiState(
+                    settings = ProvisioningSettings(serialNumber = "10BD4L11A5001N9"),
+                ),
+            )
+        }
+
+        compose.onNodeWithTag("serial_lock_banner").assertIsDisplayed()
+        compose.onNodeWithTag("serial_lock_banner").assertTextContains("10BD4L11A5001N9")
     }
 
     @Test fun automateSheetSaveStaysDisabledUntilBothFieldsAreValid() {
@@ -259,7 +277,10 @@ private fun TestScreen(state: ProvisionerUiState) {
     ProvisionerJattTheme {
         ProvisionerScreen(
             state = state,
-            onSaveAutomation = { _, _, _ -> true },
+            onSaveAutomation = { _, _ -> true },
+            onSetSerial = { _ -> true },
+            onClearAutomation = { true },
+            onClearSerial = { true },
             onScan = {},
             onMakeOwner = { _, _ -> },
             onRemoveOwner = { _, _ -> },

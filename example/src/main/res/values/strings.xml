@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Provisioner Jatt</string>
+    <string name="start_single_mode">Start Single Mode</string>
+    <string name="start_single_mode_automation">Start Single Mode automation</string>
+    <string name="clear_automation_and_serial">Clear automation and serial</string>
 </resources>

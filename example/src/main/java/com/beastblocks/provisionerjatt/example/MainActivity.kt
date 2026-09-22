@@ -16,19 +16,23 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        client = ProvisionerJatt.attach(this)
+        client = ProvisionerJatt.get()
+        client.attach(this, this)
         setContent {
             val state by client.state.collectAsStateWithLifecycle()
             ProvisionerJattTheme {
                 ProvisionerScreen(
                     state = state,
-                    onSaveAutomation = { packageName, apkUrl, serial ->
-                        if (packageName.isBlank() && apkUrl.isBlank()) {
-                            client.clearAutomation()
-                        } else {
-                            client.setAutomation(packageName, apkUrl, serial)
-                        }
+                    onScanThenAttach = { client.scanThenAttach(this@MainActivity, this@MainActivity) },
+                    onSaveAutomation = { packageName, apkUrl ->
+                        if (packageName.isBlank() && apkUrl.isBlank()) true
+                        else client.setAutomation(packageName, apkUrl)
                     },
+                    onSetSerial = { serial ->
+                        if (serial.isBlank()) client.clearSerial() else client.setSerial(serial)
+                    },
+                    onClearAutomation = { client.clearAutomation() },
+                    onClearSerial = { client.clearSerial() },
                     onScan = client::scan,
                     onMakeOwner = client::makeDeviceOwner,
                     onRemoveOwner = client::removeOwner,

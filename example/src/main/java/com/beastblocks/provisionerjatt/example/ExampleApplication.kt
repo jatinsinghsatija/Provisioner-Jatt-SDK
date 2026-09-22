@@ -1,6 +1,7 @@
 package com.beastblocks.provisionerjatt.example
 
 import android.app.Application
+import com.beastblocks.provisionerjattsdk.PairingDialogColors
 import com.beastblocks.provisionerjattsdk.ProvisionerJatt
 import com.beastblocks.provisionerjattsdk.ProvisionerOptions
 
@@ -10,7 +11,9 @@ class ExampleApplication : Application() {
         ProvisionerJatt.initialize(
             this,
             ProvisionerOptions(
+                pairingColors = PairingDialogColors(),
                 pairingWatermarkResId = R.drawable.logo_provisioner,
+                showProvisionerDialog = true,
             ),
         )
     }
