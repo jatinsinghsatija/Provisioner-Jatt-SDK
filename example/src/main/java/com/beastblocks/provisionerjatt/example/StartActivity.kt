@@ -59,9 +59,10 @@ class StartActivity : ComponentActivity() {
         client.detach(this)
         client.clearAutomationAndSerial()
         if (automation) {
-            client.setAutomation(TEST_DPC_PACKAGE, TEST_DPC_URL)
+            client.scanThenAutomateThenAttach(this, this, TEST_DPC_PACKAGE, TEST_DPC_URL)
+        } else {
+            client.scanThenAttach(this, this)
         }
-        client.scanThenAttach(this, this)
     }
 
     private fun openMain(scanThenAttach: Boolean) {

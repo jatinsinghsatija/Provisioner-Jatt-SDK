@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.beastblocks</groupId>
   <artifactId>provisioner-jatt</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
   <packaging>aar</packaging>
   <name>Provisioner Jatt SDK</name>
   <description>USB + wireless ADB provisioning SDK</description>

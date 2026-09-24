@@ -1,14 +1,47 @@
-# Gradle / IDE
+# Gradle
+.gradle/
+build/
+**/build/
+.kotlin/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Local machine
+local.properties
 *.iml
-.gradle
 .idea/
 .DS_Store
-/build
-**/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+**/.DS_Store
 
-# SDK source — not versioned. Ship the AAR from dist/ instead.
-/provisioner-jatt/
+# Android / NDK
+.externalNativeBuild/
+.cxx/
+captures/
+.navigation/
+output.json
+
+# Duplicate local AAR copy (JitPack uses repo/)
+/dist/
+
+# Logs / crash dumps
+*.log
+*.hprof
+hs_err_pid*
+
+# Signing (never publish keys)
+*.jks
+*.keystore
+*.p12
+google-services.json
+
+# OS / editor
+*.swp
+*~
+.vscode/
+
+# Keep the published AAR + POM in /repo (current version only).
+# Keep :provisioner-jatt source.
+/provisioner-jatt

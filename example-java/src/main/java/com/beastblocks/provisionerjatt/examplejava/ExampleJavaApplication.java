@@ -9,23 +9,20 @@ public class ExampleJavaApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        ProvisionerOptions defaults = ProvisionerOptions.from(this);
         ProvisionerJatt.initialize(
             this,
             new ProvisionerOptions(
-                new PairingDialogColors(
-                    PairingDialogColors.DEFAULT_BACKGROUND,
-                    PairingDialogColors.DEFAULT_SURFACE,
-                    PairingDialogColors.DEFAULT_SURFACE_PRESSED,
-                    PairingDialogColors.DEFAULT_ACCENT,
-                    PairingDialogColors.DEFAULT_ON_ACCENT,
-                    PairingDialogColors.DEFAULT_YELLOW,
-                    PairingDialogColors.DEFAULT_TEXT_PRIMARY,
-                    PairingDialogColors.DEFAULT_TEXT_SECONDARY,
-                    PairingDialogColors.DEFAULT_OUTLINE
-                ),
+                PairingDialogColors.from(this),
                 R.drawable.logo_provisioner,
                 null,
-                true
+                defaults.getShowProvisionerDialog(),
+                defaults.getEnableVibrationFeedback(),
+                defaults.getEnableConfirmation(),
+                defaults.getEnableToastAlerts(),
+                defaults.getEnableSingleModeAutomationDialog(),
+                defaults.getEnableRememberAndReconnect(),
+                defaults.getEnableReconnectProgressToast()
             )
         );
     }

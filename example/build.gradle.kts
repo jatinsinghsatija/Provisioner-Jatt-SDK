@@ -12,8 +12,8 @@ android {
         applicationId = "com.beastblocks.provisionerjatt"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -31,7 +31,7 @@ android {
 }
 
 dependencies {
-    implementation("com.beastblocks:provisioner-jatt:1.1.1")
+    implementation("com.beastblocks:provisioner-jatt:1.2.0")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext.junit)
