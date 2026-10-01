@@ -9,12 +9,15 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.beastblocks.provisionerjatt"
+        applicationId = "com.beastblocks.provisionerjatt.example"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.2.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
     buildTypes {
         release {
@@ -28,10 +31,15 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    packaging {
+        jniLibs {
+            excludes += setOf("**/x86/**", "**/x86_64/**")
+        }
+    }
 }
 
 dependencies {
-    implementation("com.beastblocks:provisioner-jatt:1.2.0")
+    implementation("com.beastblocks:provisioner-jatt:1.2.1")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext.junit)

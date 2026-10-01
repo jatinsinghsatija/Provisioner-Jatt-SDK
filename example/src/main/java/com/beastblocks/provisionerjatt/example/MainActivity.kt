@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.beastblocks.provisionerjattsdk.PairingDialogColors
 import com.beastblocks.provisionerjattsdk.ProvisionerClient
 import com.beastblocks.provisionerjattsdk.ProvisionerJatt
 import com.beastblocks.provisionerjattsdk.ui.ProvisionerJattTheme
@@ -20,10 +21,11 @@ class MainActivity : ComponentActivity() {
         client.attach(this, this)
         setContent {
             val state by client.state.collectAsStateWithLifecycle()
-            ProvisionerJattTheme {
+            ProvisionerJattTheme(pairingColors = PairingDialogColors.from(this)) {
                 ProvisionerScreen(
                     state = state,
-                    onScanThenAttach = { client.scanThenAttach(this@MainActivity, this@MainActivity) },
+                    onOpenQr = { client.openQRToScan() },
+                    onOpenPairing = { client.openPairingDialog() },
                     onSaveAutomation = { packageName, apkUrl ->
                         if (packageName.isBlank() && apkUrl.isBlank()) true
                         else client.setAutomation(packageName, apkUrl)

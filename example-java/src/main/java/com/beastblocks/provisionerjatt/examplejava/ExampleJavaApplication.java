@@ -22,7 +22,18 @@ public class ExampleJavaApplication extends Application {
                 defaults.getEnableToastAlerts(),
                 defaults.getEnableSingleModeAutomationDialog(),
                 defaults.getEnableRememberAndReconnect(),
-                defaults.getEnableReconnectProgressToast()
+                defaults.getEnableReconnectProgressToast(),
+                defaults.getEnableQRPairing(),
+                defaults.getQrDisabledMessage(),
+                defaults.getPairCodeErrorMessage(),
+                defaults.getQrNoDevicesMessage(),
+                defaults.getEnableDismissDialogWhenTappedOutside(),
+                true,
+                null,
+                null,
+                true,
+                defaults.getSingleModeProvisionFloatingNotConnectedMessage(),
+                null
             )
         );
     }

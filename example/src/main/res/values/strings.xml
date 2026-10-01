@@ -4,4 +4,35 @@
     <string name="start_single_mode">Start Single Mode</string>
     <string name="start_single_mode_automation">Start Single Mode automation</string>
     <string name="clear_automation_and_serial">Clear automation and serial</string>
+    <string name="set_account_frp">Set account FRP</string>
+    <string name="set_organization_name">Set organization name</string>
+    <string name="org_name_success">Organization name set to %1$s</string>
+    <string name="org_name_failed">%1$s</string>
+    <string name="frp_account_success">name: %1$s\nemail: %2$s\nfrpToken: %3$s</string>
+    <string name="frp_account_failed">%1$s</string>
+    <string name="automate_provisioning">Automate provisioning</string>
+    <string name="action_qr">QR</string>
+    <string name="action_passcode">Pairing code</string>
+    <string name="pane_discovered">Discovered</string>
+    <string name="pane_connected">Connected</string>
+    <string name="serial_lock_title">Serial lock  %1$s</string>
+    <string name="serial_lock_body">Only this device can be discovered, paired, and connected. After pairing and authorization, the SDK connected-device dialog tracks provisioning or DPC actions.</string>
+    <string name="automate_help">Package + https URL automate DPC install. Serial is independent: when set, only that device is discovered, paired, and connected. After pairing, the SDK shows a connected-device dialog with live steps, or the DPC list if automation is off.</string>
+    <string name="package_name">Package name</string>
+    <string name="package_hint">Example: com.example.dpc</string>
+    <string name="package_error">Enter a valid package name, such as com.example.dpc</string>
+    <string name="apk_url">App download URL</string>
+    <string name="apk_hint">Must be a valid https:// URL</string>
+    <string name="apk_error">Enter a valid https:// download URL</string>
+    <string name="serial_no">Serial No</string>
+    <string name="serial_hint">Optional. Leave blank to allow any device. Required for the SDK connected-device dialog.</string>
+    <string name="save">Save</string>
+    <string name="turn_off_automation">Turn off automation</string>
+    <string name="clear_serial_lock">Clear serial lock</string>
+    <string name="automation_on_serial">Automation is on for the device with serial %1$s.</string>
+    <string name="automation_on_all">Automation is on for every newly connected device.</string>
+    <string name="test_dpc_package" translatable="false">com.afwsamples.testdpc</string>
+    <string name="test_dpc_url" translatable="false">https://uatapi.aopay.co.in/api/V1/AopayFinance/download-DPC</string>
+    <!-- Google Cloud Console OAuth 2.0 Web client ID. Pass to addFRPAccount as serverClientId. -->
+    <string name="default_web_client_id" translatable="false">717947247407-eq80gek6kdg39boa5cgmarau9p6hhdkm.apps.googleusercontent.com</string>
 </resources>

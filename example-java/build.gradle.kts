@@ -7,11 +7,14 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.beastblocks.provisionerjatt.java"
+        applicationId = "com.beastblocks.provisionerjatt.examplejava"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.2.1"
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
     buildTypes {
         release {
@@ -23,9 +26,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    packaging {
+        jniLibs {
+            excludes += setOf("**/x86/**", "**/x86_64/**")
+        }
+    }
 }
 
 dependencies {
-    implementation("com.beastblocks:provisioner-jatt:1.2.0")
+    implementation("com.beastblocks:provisioner-jatt:1.2.1")
     implementation("androidx.activity:activity:1.8.0")
 }

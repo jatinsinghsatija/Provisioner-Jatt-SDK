@@ -47,6 +47,28 @@
         android:textColor="@color/brand_white" />
 
     <Button
+        android:id="@+id/btn_set_account_frp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_button_accent"
+        android:tag="set_account_frp"
+        android:text="@string/set_account_frp"
+        android:textAllCaps="false"
+        android:textColor="@color/brand_white" />
+
+    <Button
+        android:id="@+id/btn_set_organization_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_button_accent"
+        android:tag="set_organization_name"
+        android:text="@string/set_organization_name"
+        android:textAllCaps="false"
+        android:textColor="@color/brand_white" />
+
+    <Button
         android:id="@+id/btn_clear_and_open_main"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -11,6 +11,8 @@ class ExampleApplication : Application() {
             this,
             ProvisionerOptions.from(this).copy(
                 pairingWatermarkResId = R.drawable.logo_provisioner,
+                enableSingleModeQRPairCodeLauncher = true,
+                enableSingleModeProvisioningFloating = true,
             ),
         )
     }

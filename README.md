@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="example/src/main/res/drawable/logo_provisioner.png" alt="Provisioner Jatt SDK" width="280"/>
+  <img src="docs/readme/logo_provisioner.png" alt="Provisioner Jatt SDK" width="280"/>
 </p>
 
 <p align="center">
@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="v1.2.0" src="https://img.shields.io/badge/version-v1.2.0-FF8A00?style=for-the-badge&labelColor=000000"/>
+  <img alt="v1.2.1" src="https://img.shields.io/badge/version-v1.2.1-FF8A00?style=for-the-badge&labelColor=000000"/>
   <img alt="Min SDK 26" src="https://img.shields.io/badge/minSdk-26-FFCC00?style=for-the-badge&labelColor=000000"/>
   <img alt="Gradle 8.13+" src="https://img.shields.io/badge/Gradle-8.13%2B-FF8A00?style=for-the-badge&labelColor=000000"/>
   <img alt="JitPack" src="https://img.shields.io/badge/distribute-JitPack%20AAR%20%2B%20POM-white?style=for-the-badge&labelColor=000000"/>
@@ -32,12 +32,20 @@ You do **not** build these in the host app.
 | `UsbAttachedReceiver` + device filter | `USB_DEVICE_ATTACHED` on your Activity |
 | USB permission + nearby Wi-Fi / location prompts | Permission plumbing |
 | Six-digit wireless pairing overlay | Pairing Activity |
+| Host QR pairing overlay (same dialog, switches with pair-code) | QR pairing Activity |
+| Reopen QR or pair-code (`openQRToScan` / `openPairingDialog`) | Host overlay wiring |
 | Serial-locked connected-device dialog | Host progress / DPC UI |
 | Screen stays on while a host is attached | Keep-awake / wake lock |
 | Auto-connect USB; 20s host-side wireless reconnect | Reconnect loops |
 | Serial lock, scan, make owner, automate DPC | ADB shell scripts |
 | Nearby/USB device picker (`scanThenAttach`) | Host serial-picker UI |
 | Scan, set DPC package+URL, then attach (`scanThenAutomateThenAttach`) | Host serial picker + automation wiring |
+| Dialog / pair / provision callbacks (`ProvisionerJattListener`) | Host dialog observers |
+| Serial-locked QR + passcode FABs (`enableSingleModeQRPairCodeLauncher`) | Host-layout pair buttons |
+| Serial-locked provisioning FAB (`enableSingleModeProvisioningFloating`) | Host-layout provision button |
+| Connected / discoverable list widget (`ProvisionerJattDeviceList` / `ProvisionerJattDeviceListView`) | Host-written device cards |
+| Device-owner check (`isDeviceOwner`) | Host `DevicePolicyManager` device-owner query |
+| FRP (`addFRPAccount` / `setFRP` / `setOrganizationName`) | Host Google sign-in, factory-reset protection, and optional lock-screen org name |
 
 Implementation path after JitPack: **depend → `initialize` → attach a host screen**.
 
@@ -53,9 +61,31 @@ flowchart LR
   E -->|last host gone| F[Session reset]
 ```
 
-Every snippet is **Kotlin**, then **Java**. The filled pill matches the block under it.
+Every snippet is **Kotlin**, then **Java**. The sliding tab matches the block under it.
 
 ## Changelog
+
+### v1.2.1
+
+Compared with **v1.2.0**:
+
+- Location and nearby-Wi-Fi declarations no longer use `maxSdkVersion="32"` or `neverForLocation`. Host apps that need location keep those permissions through API 36. The SDK still only *requests* location on API 32 and below, and `NEARBY_WIFI_DEVICES` on API 33+.
+- After `openQRToScan()` / `openPairingDialog()` pairing succeeds, the overlay stays closed. It does not reopen QR when no serial is set.
+- **QR pairing.** The host shows a scannable overlay. The pairing device uses Wireless debugging → Pair device with QR code. Auto-opens only with a serial lock and an unpaired discoverable wireless device. See **QR pairing**.
+- **`openQRToScan()`** and **`openPairingDialog()`** reopen that overlay from the host (QR or six-digit). They do not attach a screen by themselves.
+- **Single-mode launcher FABs.** `enableSingleModeQRPairCodeLauncher` (default false) draws QR + passcode floating buttons on the attached host when a serial is set. Optional `qrSingleModeIcon` / `pairCodeSingleModeIcon`. The host layout does not add them.
+- **Provisioning FAB.** `enableSingleModeProvisioningFloating` (default **true**) draws a larger provision button under the passcode FAB when a serial is set. Tap calls `openProvisioningAutomation()`. Optional `singleModeProvisionFloatingIcon` and `singleModeProvisionFloatingNotConnectedMessage`. Independent of the QR/passcode launcher flag.
+- **Device list widget.** `ProvisionerJattDeviceList` (Compose) and `ProvisionerJattDeviceListView` (XML) render connected or discoverable rows. Hosts pass `DeviceListKind.CONNECTED` or `DISCOVERABLE` plus that list. Cards match the original sample layout (no per-item logo). Colors follow `pairingColors` from `initialize`, or the SDK default palette.
+- **`isDeviceOwner()`.** Checks whether the integrating app is device owner of **this** device. Does not change a paired ADB target.
+- **FRP.** `ProvisionerJattFrp.addFRPAccount` runs Google’s current account chooser (Credential Manager) on the **calling host activity** (no SDK activity). Pass the OAuth **web client ID** as `serverClientId` on that call — not on `initialize`. After success the SDK returns `name`, `email`, and `frpToken`. `setFRP(token)` requires this app to be device owner and applies factory reset protection. Optional `ProvisionerJattFrp.setOrganizationName(orgName)` is a separate call on **that class only** (not on `ProvisionerJatt`): it internally checks that this host app is device owner, then writes the lock-screen organization name. Failures include a specific `reason`.
+- FAB and list-item actions (make owner, remove owner, disconnect, scan, redo, confirm) use themed bounded ripples and haptic feedback when `enableVibrationFeedback` is true.
+- **`ProvisionerOptions`:** `enableQRPairing`, `qrDisabledMessage`, `pairCodeErrorMessage`, `qrNoDevicesMessage`, `enableDismissDialogWhenTappedOutside`, `enableSingleModeQRPairCodeLauncher`, `qrSingleModeIcon`, `pairCodeSingleModeIcon`, `enableSingleModeProvisioningFloating`, `singleModeProvisionFloatingNotConnectedMessage`, `singleModeProvisionFloatingIcon`.
+- **`openProvisioningAutomation()`** opens the connected-device / DPC dialog when any device is READY; otherwise toasts `singleModeProvisionFloatingNotConnectedMessage`.
+- **`ProvisionerJattListener`:** `onQRDialogInvoked` / `onQRDialogClosed`, `onPairingModeSwitch` (`QRTOPAIRCODE` / `PAIRCODETOQR`), `onQRPairCodeStatusUpdate` (use this instead of `onPairStatusUpdate`).
+- The pairing device shows the **host app name** (`android:label`) instead of `provisionerjatt_<model>`.
+- Minimum supported Gradle is documented as **8.13+** (AGP 8.11 floor).
+
+Use `implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.1")`.
 
 ### v1.2.0
 
@@ -82,8 +112,7 @@ This section is what you must wire. Custom pairing modes, overlays, and theming 
 Open the **root** Gradle settings file. Add Google, Maven Central, and JitPack. JitPack serves this SDK (AAR + POM). The POM pulls the rest.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>SETTINGS · SETTINGS.GRADLE.KTS</sub></p>
@@ -100,8 +129,7 @@ dependencyResolutionManagement {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>SETTINGS · SETTINGS.GRADLE</sub></p>
@@ -120,8 +148,7 @@ dependencyResolutionManagement {
 In the **app** module, set `minSdk` 26. The SDK’s minimum supported Gradle is **8.13**. Add a single `implementation`. Do not drop a raw AAR into `app/libs/`. Do not re-declare the SDK’s transitive libraries. If your app already uses Compose for its own UI, keep those lines for the app — they are not required as SDK companions.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>APP · BUILD.GRADLE.KTS</sub></p>
@@ -134,13 +161,12 @@ android {
 }
 
 dependencies {
-    implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.0")
+    implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.1")
 }
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>APP · BUILD.GRADLE</sub></p>
@@ -153,7 +179,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.0'
+    implementation 'com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.1'
 }
 ```
 
@@ -165,13 +191,12 @@ Optional brand mark: copy `example/src/main/res/drawable/logo_provisioner.png` i
 
 ## Initialize in `Application`
 
-`initialize` stores options and starts the engine. It does **not** scan, prompt, or pair until a screen calls `attach`, `scanThenAttach`, or `scanThenAutomateThenAttach`.
+`initialize` stores options and starts the engine. It does **not** scan, prompt, or pair until a screen calls `attach`, `scanThenAttach`, or `scanThenAutomateThenAttach`. Overlay reopen (`openQRToScan` / `openPairingDialog`) also waits until a host is attached. The Google OAuth **web** client ID is not an initialize option; pass it to `ProvisionerJattFrp.addFRPAccount`.
 
-Register the `Application` class in the manifest. `ProvisionerJatt.initialize(this)` is enough for every default. The block below lists **every** `ProvisionerOptions` field you can pass.
+Register the `Application` class in the manifest. `ProvisionerJatt.initialize(this)` is enough for every default. The block below lists **every** `ProvisionerOptions` field you can pass. Fields from `enableQRPairing` through `singleModeProvisionFloatingIcon` are **v1.2.1**. Omit them to keep the defaults.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>APPLICATION · APP.KT</sub></p>
@@ -194,6 +219,7 @@ class App : Application() {
                 // Watermark on pairing, scan picker, and connected-device dialogs. Default: null (none).
                 pairingWatermarkResId = R.drawable.logo_provisioner,
                 // Your own six-digit UI instead of the SDK dialog. Default: null (SDK draws the overlay).
+                // Does not replace the QR view — that overlay is always the SDK UI.
                 pairingCodeHandler = null,
                 // After a serial-locked device is authorized, show the connected-device / DPC dialog.
                 // Default: true. Has no effect unless a serial is set.
@@ -211,6 +237,29 @@ class App : Application() {
                 enableRememberAndReconnect = true,
                 // Sticky 20s reconnect countdown toast while a pairing advertisement is visible. Default: true.
                 enableReconnectProgressToast = true,
+                // Host QR overlay + openQRToScan(). Default: true. False restores pre-QR pairing-code-only behavior.
+                enableQRPairing = true,
+                // Toast when openQRToScan() is called while QR pairing is disabled.
+                qrDisabledMessage = ProvisionerOptions.DEFAULT_QR_DISABLED_MESSAGE,
+                // Toast when openPairingDialog() is called and no pairing-code advertisement is on the LAN.
+                pairCodeErrorMessage = ProvisionerOptions.DEFAULT_PAIR_CODE_ERROR_MESSAGE,
+                // Toast when openQRToScan() is called and no unpaired discoverable wireless device is present.
+                qrNoDevicesMessage = ProvisionerOptions.DEFAULT_QR_NO_DEVICES_MESSAGE,
+                // Tap outside SDK dialogs to dismiss. Default: true. False keeps Close / Back only.
+                enableDismissDialogWhenTappedOutside = true,
+                // SDK-drawn QR + passcode FABs on a serial-locked host. Default: false (off).
+                enableSingleModeQRPairCodeLauncher = false,
+                // QR FAB icon. Default: null (SDK QR drawable). Tint uses pairingColors.
+                qrSingleModeIcon = null,
+                // Passcode FAB icon. Default: null (SDK passcode drawable). Tint uses pairingColors.
+                pairCodeSingleModeIcon = null,
+                // Larger provision FAB under passcode when a serial is set. Default: true.
+                enableSingleModeProvisioningFloating = true,
+                // Toast when openProvisioningAutomation() is called and no device is connected.
+                singleModeProvisionFloatingNotConnectedMessage =
+                    ProvisionerOptions.DEFAULT_PROVISION_FLOATING_NOT_CONNECTED_MESSAGE,
+                // Provision FAB icon. Default: null (SDK provision drawable). Tint uses pairingColors.
+                singleModeProvisionFloatingIcon = null,
             ),
         )
         // Resource defaults only: ProvisionerJatt.initialize(this)
@@ -226,8 +275,7 @@ class App : Application() {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>APPLICATION · APP.JAVA</sub></p>
@@ -254,7 +302,18 @@ public class App extends Application {
                 true,                          // enableToastAlerts; default true
                 true,                          // enableSingleModeAutomationDialog; default true
                 true,                          // enableRememberAndReconnect; default true
-                true                           // enableReconnectProgressToast; default true
+                true,                          // enableReconnectProgressToast; default true
+                true,                          // enableQRPairing; default true
+                ProvisionerOptions.DEFAULT_QR_DISABLED_MESSAGE,      // openQRToScan while QR disabled
+                ProvisionerOptions.DEFAULT_PAIR_CODE_ERROR_MESSAGE,  // openPairingDialog with no pair-code ad
+                ProvisionerOptions.DEFAULT_QR_NO_DEVICES_MESSAGE,    // openQRToScan with no pairable device
+                true,                          // enableDismissDialogWhenTappedOutside; default true
+                false,                         // enableSingleModeQRPairCodeLauncher; default false
+                null,                          // qrSingleModeIcon; null = SDK QR icon
+                null,                          // pairCodeSingleModeIcon; null = SDK passcode icon
+                true,                          // enableSingleModeProvisioningFloating; default true
+                ProvisionerOptions.DEFAULT_PROVISION_FLOATING_NOT_CONNECTED_MESSAGE,
+                null                           // singleModeProvisionFloatingIcon; null = SDK provision icon
             )
         );
         // Defaults only: ProvisionerJatt.initialize(this);
@@ -271,15 +330,26 @@ public class App extends Application {
 | Parameter | Default | Purpose |
 | --- | --- | --- |
 | `pairingColors` | Brand colors from `colors.xml` | Tints pairing, scan picker, confirmation, connected-device UI, toasts |
-| `pairingWatermarkResId` | `null` | Optional drawable behind those dialogs |
-| `pairingCodeHandler` | `null` | If set, the SDK does not draw its pairing dialog — you submit the code |
+| `pairingWatermarkResId` | `null` | Optional drawable behind pairing/provisioner dialogs, list cards (both kinds), and empty states |
+| `pairingCodeHandler` | `null` | If set, the SDK does not draw its **six-digit** pairing dialog — you submit the code. The **QR** view is still the SDK overlay |
 | `showProvisionerDialog` | `true` | Connected-device / DPC overlay after a **serial-locked** device is authorized |
-| `enableVibrationFeedback` | `true` | Haptic pulse on dialogs, scan select, pairing digits, automation steps |
+| `enableVibrationFeedback` | `true` | Haptic pulse on dialogs, scan select, pairing digits, automation steps, FAB taps, and list-item actions (make owner, remove owner, disconnect, scan, redo) |
 | `enableConfirmation` | `true` | Confirm Device, Pair, and Disconnect ask first |
 | `enableToastAlerts` | `true` | Alerts after scan confirm and after pairing plus connection |
 | `enableSingleModeAutomationDialog` | `true` | Same connected-device dialog; `false` hides it even with a serial |
 | `enableRememberAndReconnect` | `true` | Remember wireless peers; 20s reconnect only after a **host-side** drop |
 | `enableReconnectProgressToast` | `true` | Countdown toast during that 20s window if a pairing advertisement is open |
+| `enableQRPairing` | `true` | Host QR overlay + `openQRToScan()`. Auto-opens only with a serial. `false` restores pairing-code-only behavior |
+| `qrDisabledMessage` | `QR functionality has been disabled for this build. Will be there soon.` | Toast when `openQRToScan()` is called while QR is disabled |
+| `pairCodeErrorMessage` | `No device available to pair with Pairing Code` | Toast when `openPairingDialog()` is called and no pairing-code advertisement is on the LAN |
+| `qrNoDevicesMessage` | `No device available to pair and connect` | Toast when `openQRToScan()` is called and no unpaired discoverable wireless device is present |
+| `enableDismissDialogWhenTappedOutside` | `true` | Tap the dimmed area to dismiss SDK dialogs (scan, pairing/QR, connected-device, confirmations, alerts). `false` keeps Close / Confirm / Cancel / Back only |
+| `enableSingleModeQRPairCodeLauncher` | `false` | When a **serial is set**, draw QR + passcode FABs on the attached host. Host layout does not add them. Clicks call `openQRToScan()` / `openPairingDialog()` |
+| `qrSingleModeIcon` | `null` (SDK QR icon) | Drawable for the QR FAB. Tint is `pairingColors.onAccent` on `accent` |
+| `pairCodeSingleModeIcon` | `null` (SDK passcode icon) | Drawable for the passcode FAB. Same tint |
+| `enableSingleModeProvisioningFloating` | `true` | When a **serial is set**, draw a larger provision FAB under the passcode button (or alone if the QR/passcode launcher is off). Host layout does not add it. Click calls `openProvisioningAutomation()` |
+| `singleModeProvisionFloatingNotConnectedMessage` | `Device not connected` | Toast when `openProvisioningAutomation()` is called and no device is connected |
+| `singleModeProvisionFloatingIcon` | `null` (SDK provision icon) | Drawable for the provision FAB. Same tint |
 
 Calling `initialize` again later only **updates options**. It does not re-scan or re-pair.
 
@@ -303,8 +373,7 @@ While a host is attached, that screen is kept on. The wake lock is released on `
 Use this when the host should start USB + wireless discovery, pairing overlay, and auto-connect immediately.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · PROVISIONERACTIVITY.KT</sub></p>
@@ -334,8 +403,7 @@ class ProvisionerActivity : ComponentActivity() {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · PROVISIONERACTIVITY.JAVA</sub></p>
@@ -377,8 +445,7 @@ It runs **before** `attach`. It is **not** the pairing overlay. The library show
 The picker does **not** pair, open ADB, or provision.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · SCANTHENATTACH</sub></p>
@@ -398,8 +465,7 @@ client = ProvisionerJatt.scanThenAttach(this, this, listener, "Choose a device")
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · SCANTHENATTACH</sub></p>
@@ -423,8 +489,7 @@ client = ProvisionerJatt.scanThenAttach(this, this, listener, "Choose a device")
 Same picker as `scanThenAttach`. After the serial is saved it also stores **package name + HTTPS APK URL**, then `attach`. Both automation fields are **required**. Auto-provision runs only on that serial once the device is authorized.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · SCANTHENAUTOMATETHENATTACH</sub></p>
@@ -441,8 +506,7 @@ client = ProvisionerJatt.scanThenAutomateThenAttach(
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · SCANTHENAUTOMATETHENATTACH</sub></p>
@@ -466,8 +530,7 @@ client = ProvisionerJatt.scanThenAutomateThenAttach(
 After `initialize` / any attach form, anywhere on a host screen:
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 ```kotlin
@@ -475,13 +538,14 @@ val client = ProvisionerJatt.get()
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 ```java
 ProvisionerClient client = ProvisionerJatt.get();
 ```
+
+While that host is attached you can also reopen pairing from your own UI — `openQRToScan()` and `openPairingDialog()`. They are **not** attach forms. They need an active session. Full contract is under **Exposed functions**; product behavior is under **QR pairing**.
 
 ---
 
@@ -502,8 +566,7 @@ Always pass the **Activity**, not a Fragment context: `detach(this)` or `Provisi
 If you pass the **activity** as owner from a fragment, the session stays live until the activity is destroyed — even after the fragment’s view is gone.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · ONDESTROY</sub></p>
@@ -516,8 +579,7 @@ override fun onDestroy() {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>ACTIVITY · ONDESTROY</sub></p>
@@ -543,8 +605,7 @@ Hosts are keyed by Activity. The first `detach(activity)` drops that window even
 All of these hang off `ProvisionerClient` (`ProvisionerJatt.get()`, or the value returned by `attach` / `scanThenAttach`). Comments in the snippets are the contract.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>CLIENT · KOTLIN</sub></p>
@@ -584,6 +645,18 @@ client.disconnectWireless(deviceId)                    // host disconnect; forge
 client.submitPairingCode("123456")
 client.dismissPairing()
 
+// Reopen pairing overlays on an attached host. Both return false when they cannot open.
+client.openQRToScan()       // QR view. Needs enableQRPairing + an unpaired discoverable wireless device.
+client.openPairingDialog()  // Six-digit view. Needs a pairing-code advertisement on the LAN.
+client.openProvisioningAutomation() // Connected-device dialog if any device is READY.
+
+// If *this* app is device owner of this device, set the lock-screen organization name.
+ProvisionerJatt.isDeviceOwner()
+ProvisionerJattFrp.setOrganizationName("Acme")
+
+ProvisionerJattFrp.addFRPAccount(this, { result -> /* name, email, frpToken or reason */ }, getString(R.string.default_web_client_id))
+ProvisionerJattFrp.setFRP(frpToken)
+
 // After the user grants nearby / location permission from your own prompt.
 client.onLocalNetworkPermissionGranted()
 
@@ -599,8 +672,7 @@ ProvisionerJatt.isSessionActive()
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>CLIENT · JAVA</sub></p>
@@ -628,6 +700,13 @@ client.disconnectWireless(deviceId);
 
 client.submitPairingCode("123456");
 client.dismissPairing();
+boolean qrOpened = client.openQRToScan();
+boolean pairOpened = client.openPairingDialog();
+boolean provisionOpened = client.openProvisioningAutomation();
+boolean deviceOwner = client.isDeviceOwner();
+FrpSetResult orgApplied = ProvisionerJattFrp.setOrganizationName("Acme");
+ProvisionerJattFrp.addFRPAccount(this, result -> { /* name, email, frpToken or reason */ }, getString(R.string.default_web_client_id));
+FrpSetResult frpApplied = ProvisionerJattFrp.setFRP(frpToken);
 client.onLocalNetworkPermissionGranted();
 
 client.attach(this, this);
@@ -638,11 +717,183 @@ client.resetSession();
 ProvisionerJatt.isSessionActive();
 ```
 
+### `openQRToScan` — show the host QR overlay
+
+Use this when a host is already attached and you want the QR view on demand (toolbar button, no serial lock, or after the user closed QR). It is **not** `attach`. It does not start discovery by itself.
+
+Returns `true` only when the overlay opens in QR mode.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · OPENQRTOSCAN</sub></p>
+
+```kotlin
+val opened = client.openQRToScan()
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · OPENQRTOSCAN</sub></p>
+
+```java
+boolean opened = client.openQRToScan();
+```
+
+| Result | When |
+| --- | --- |
+| Overlay opens, returns `true` | Host session is active, `enableQRPairing` is true, and at least one unpaired discoverable wireless device is present and not connected |
+| Toast `qrDisabledMessage`, returns `false` | `enableQRPairing` is false |
+| Toast `qrNoDevicesMessage`, returns `false` | QR is enabled, session is active, but nothing unpaired and discoverable is on the LAN |
+| Silent `false` | No host session (`attach` / scan-then-attach has not run, or everything is detached) |
+
+Product rules (auto-open, serial lock, mode switch) are under **QR pairing**.
+
+### `openPairingDialog` — show the six-digit overlay
+
+Use this when a host is already attached and you want the pairing-code view again (after Close, or from a passcode button). It is **not** `attach`.
+
+Returns `true` only when the overlay opens in six-digit mode.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · OPENPAIRINGDIALOG</sub></p>
+
+```kotlin
+val opened = client.openPairingDialog()
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · OPENPAIRINGDIALOG</sub></p>
+
+```java
+boolean opened = client.openPairingDialog();
+```
+
+| Result | When |
+| --- | --- |
+| Overlay opens, returns `true` | Host session is active and a pairing-code advertisement is on the LAN (device tags when more than one is present) |
+| Toast `pairCodeErrorMessage`, returns `false` | Session is active but nothing is advertising a pairing code |
+| Silent `false` | No host session |
+
+When `enableSingleModeQRPairCodeLauncher` is true and a serial is set, the SDK draws buttons that call these two functions. See **Single-mode QR / pair-code launcher**.
+
+### `openProvisioningAutomation` — show the connected-device dialog
+
+Use this when a host is already attached and you want the provisioning / DPC overlay on demand (the large serial-locked FAB, or your own button). It is **not** `attach`.
+
+Returns `true` only when the connected-device dialog is shown.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · OPENPROVISIONINGAUTOMATION</sub></p>
+
+```kotlin
+val opened = client.openProvisioningAutomation()
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · OPENPROVISIONINGAUTOMATION</sub></p>
+
+```java
+boolean opened = client.openProvisioningAutomation();
+```
+
+| Result | When |
+| --- | --- |
+| Overlay opens, returns `true` | Host session is active and at least one device is `READY` |
+| Toast `singleModeProvisionFloatingNotConnectedMessage`, returns `false` | Session is active but no connected device |
+| Silent `false` | No host session |
+
+The toast still shows when `enableToastAlerts` is false — this call is an explicit host action. See **Single-mode provisioning FAB**.
+
+### `isDeviceOwner` — this app as device owner
+
+**Use when:** you need to know whether the app this SDK is integrated into is the **device owner of that same device**. This is **this device**, not a paired phone you provision over ADB.
+
+**How:** `ProvisionerJatt.isDeviceOwner()` (or `client.isDeviceOwner()`). Pass a `Context` when `initialize` has not run yet.
+
+| Result | When |
+| --- | --- |
+| Returns `true` | This app is device owner of this device |
+| Returns `false` | This app is not device owner, `initialize` has not run and no `Context` was passed, or the SDK is not licensed |
+
+### `addFRPAccount` / `setFRP` / `setOrganizationName` — factory reset protection
+
+**Use when:** you need a Google-account FRP token from the integrating app, then later apply that token on a **device-owner** app. Optionally set the lock-screen organization name on that same device-owner app.
+
+**How:** `addFRPAccount(activity, callback, serverClientId)` runs Google’s current account chooser **on that same host activity**. There is no extra SDK activity. The chooser is Credential Manager (`GetGoogleIdOption`), which shows the host app identity from that OAuth client. The **web client ID** is required on this call (`serverClientId`). Do not pass it to `initialize`. See **Get a Web client ID**. On success the SDK returns `name`, `email`, and `frpToken`, then clears the Credential Manager sign-in state. `setFRP(token)` runs on this device: if the app is not device owner it fails; otherwise it applies factory reset protection from that token. Optional `setOrganizationName(orgName)` is a **separate** call (it is not part of add/set FRP). It internally checks that **this host app** is device owner of this device, then writes the lock-screen organization name. Blank `orgName` clears it. Pass a `Context` when `initialize` has not run.
+
+**What happens:** only `addFRPAccount`, `setFRP`, and `setOrganizationName` are public on `ProvisionerJattFrp`. Failures return `success = false` with a specific `reason` (cancelled sign-in, Play services missing, not device owner, invalid token, and so on).
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · FRP</sub></p>
+
+```kotlin
+ProvisionerJattFrp.addFRPAccount(this, { result ->
+    if (result.success) {
+        val name = result.name
+        val email = result.email
+        val frpToken = result.frpToken
+    } else {
+        val reason = result.reason
+    }
+}, getString(R.string.default_web_client_id))
+val applied = ProvisionerJattFrp.setFRP(frpToken)
+val org = ProvisionerJattFrp.setOrganizationName("Acme")
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>CLIENT · FRP</sub></p>
+
+```java
+ProvisionerJattFrp.addFRPAccount(this, result -> {
+    if (result.getSuccess()) {
+        String name = result.getName();
+        String email = result.getEmail();
+        String frpToken = result.getFrpToken();
+    } else {
+        String reason = result.getReason();
+    }
+}, getString(R.string.default_web_client_id));
+FrpSetResult applied = ProvisionerJattFrp.setFRP(frpToken);
+FrpSetResult org = ProvisionerJattFrp.setOrganizationName("Acme");
+```
+
+| Result | When |
+| --- | --- |
+| `addFRPAccount` `success` | Google account chooser returned an account and `frpToken` is ready, then Credential Manager state was cleared |
+| `addFRPAccount` failure | Missing host web client ID, Play services missing, sign-in cancelled or failed, or a sign-in is already running |
+| `setFRP` `success` | This app is device owner and factory reset protection was applied from `token` |
+| `setFRP` failure | Not device owner, empty or invalid token, no admin, or the system rejected the FRP policy |
+| `setOrganizationName` `success` | This host app is device owner and `orgName` was written to the lock screen |
+| `setOrganizationName` failure | Not device owner, no admin, `initialize` has not run and no `Context` was passed, or the system rejected the change |
+
+### Device lists (optional)
+
 Kotlin Flow collection (optional — automation and pairing still run if you never collect):
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 ```kotlin
@@ -659,22 +910,88 @@ client.getDiscoveredDevices().getValue(); // snapshot
 client.getConnectedDevices().getValue();
 ```
 
-`ProvisionerJattListener` (optional, bound on attach / scan, cleared on `detach`):
+Do not rebuild those rows in the host. Pass the same lists to the SDK widget with `DeviceListKind.CONNECTED` or `DeviceListKind.DISCOVERABLE`. Compose: `ProvisionerJattDeviceList`. XML: `ProvisionerJattDeviceListView`. See **Device list widget**.
+
+### `ProvisionerJattListener`
+
+Optional. Bound on `attach` / `scanThenAttach` / `scanThenAutomateThenAttach`. Cleared on `detach`. Every method has an empty default — implement only what you need.
+
+One overlay serves QR and six-digit. **Invoked / closed** fire for the mode the overlay **opened** or **closed** in. Switching modes does **not** fire closed + invoked; it fires `onPairingModeSwitch` only.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>LISTENER · KOTLIN</sub></p>
 
 ```kotlin
+import com.beastblocks.provisionerjattsdk.PairStatus
+import com.beastblocks.provisionerjattsdk.PairingModeSwitch
+import com.beastblocks.provisionerjattsdk.ProvisionerJattListener
+import com.beastblocks.provisionerjattsdk.ProvisioningStatus
+
 val listener = object : ProvisionerJattListener {
     override fun onNearbyScanDialogInvoked() {}
     override fun onNearbyScanDialogClosed() {}
     override fun onPairingDialogInvoked() {}
     override fun onPairingDialogClosed() {}
+    override fun onQRDialogInvoked() {}
+    override fun onQRDialogClosed() {}
+    override fun onPairingModeSwitch(change: PairingModeSwitch) {}
     override fun onProvisioningDialogInvoked() {}
     override fun onProvisioningDialogClosed() {}
-    override fun onPairStatusUpdate(status: PairStatus) {}
+    override fun onQRPairCodeStatusUpdate(status: PairStatus) {}
     override fun onProvisioningStatusUpdate(status: ProvisioningStatus) {}
 }
+
+client = ProvisionerJatt.attach(this, this, serial, listener)
 ```
 
-`PairStatus`: `PAIRING_STARTED` → `PAIRING_ESTABLISHED` → `CONNECTION_STARTED` → `CONNECTION_ESTABLISHED`.
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>LISTENER · JAVA</sub></p>
+
+```java
+import com.beastblocks.provisionerjattsdk.PairStatus;
+import com.beastblocks.provisionerjattsdk.PairingModeSwitch;
+import com.beastblocks.provisionerjattsdk.ProvisionerJattListener;
+import com.beastblocks.provisionerjattsdk.ProvisioningStatus;
+
+ProvisionerJattListener listener = new ProvisionerJattListener() {
+    @Override public void onNearbyScanDialogInvoked() {}
+    @Override public void onNearbyScanDialogClosed() {}
+    @Override public void onPairingDialogInvoked() {}
+    @Override public void onPairingDialogClosed() {}
+    @Override public void onQRDialogInvoked() {}
+    @Override public void onQRDialogClosed() {}
+    @Override public void onPairingModeSwitch(PairingModeSwitch change) {}
+    @Override public void onProvisioningDialogInvoked() {}
+    @Override public void onProvisioningDialogClosed() {}
+    @Override public void onQRPairCodeStatusUpdate(PairStatus status) {}
+    @Override public void onProvisioningStatusUpdate(ProvisioningStatus status) {}
+};
+
+client = ProvisionerJatt.attach(this, this, serial, listener);
+```
+
+| Callback | When |
+| --- | --- |
+| `onNearbyScanDialogInvoked` / `onNearbyScanDialogClosed` | Nearby/USB picker (`scanThenAttach` / `scanThenAutomateThenAttach`) opens or closes |
+| `onQRDialogInvoked` | Overlay **opens** in QR mode (auto-open or `openQRToScan()`) |
+| `onQRDialogClosed` | Overlay **closes** while still in QR mode (Close, device gone, connected) |
+| `onPairingDialogInvoked` | Overlay **opens** in six-digit mode (pair-code advertisement or `openPairingDialog()`) |
+| `onPairingDialogClosed` | Overlay **closes** while still in six-digit mode |
+| `onPairingModeSwitch` | Overlay stays open and switches QR ↔ six-digit. `QRTOPAIRCODE` or `PAIRCODETOQR`. Invoked / closed do **not** fire |
+| `onProvisioningDialogInvoked` / `onProvisioningDialogClosed` | Serial-locked connected-device / DPC dialog opens or closes |
+| `onQRPairCodeStatusUpdate` | Pairing then connection progress for **both** QR scan and six-digit code |
+| `onProvisioningStatusUpdate` | Automation / make-owner / remove-owner progress |
+| `onPairStatusUpdate` | **Deprecated.** The default `onQRPairCodeStatusUpdate` still calls this, so hosts that only override the old name keep working |
+
+`PairStatus` (via `onQRPairCodeStatusUpdate`): `PAIRING_STARTED` → `PAIRING_ESTABLISHED` → `CONNECTION_STARTED` → `CONNECTION_ESTABLISHED`.
+
+`PairingModeSwitch`: `QRTOPAIRCODE` when the overlay changes from QR to six-digit, `PAIRCODETOQR` the other way.
 
 `ProvisioningStatus`: `AUTHENTICATING`, `SCANNING`, `DOWNLOADING_APK`, `SENDING_APK`, `INSTALLING`, `SETTING_DEVICE_OWNER`, `LAUNCHING`, `RETRYING`, `SUCCEEDED`, `FAILED`, `OWNER_REMOVED`.
 
@@ -693,8 +1010,7 @@ Only **one** fragment should attach at a time. Hosts are keyed by Activity. The 
 When the fragment appears, attach. When it is destroyed, detach. If you skip `detach`, the fragment `LifecycleOwner` still unbinds on destroy. If you passed the **activity** as owner instead, the session stays live until the activity is destroyed.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>FRAGMENT · PROVISIONERFRAGMENT.KT</sub></p>
@@ -723,8 +1039,7 @@ class ProvisionerFragment : Fragment(R.layout.fragment_provisioner) {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>FRAGMENT · PROVISIONERFRAGMENT.JAVA</sub></p>
@@ -771,8 +1086,7 @@ Only the provisioner fragment attaches. Use `onHiddenChanged` for `hide()` / `sh
 `onHiddenChanged` does **not** run for `replace()` / `remove()`. Those go through pause/destroy — `onDestroyView` still detaches.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>FRAGMENT · STACKEDPROVISIONERFRAGMENT.KT</sub></p>
@@ -808,8 +1122,7 @@ class StackedProvisionerFragment : Fragment(R.layout.fragment_provisioner) {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>FRAGMENT · STACKEDPROVISIONERFRAGMENT.JAVA</sub></p>
@@ -863,8 +1176,7 @@ Do **not** use `onHiddenChanged` (ViewPager does not `hide()` pages). Do **not**
 Old ViewPager **without** `BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT` can keep offscreen pages resumed, so `onPause` may not run on swipe. Prefer ViewPager2, or that behavior flag.
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 <p><sub>FRAGMENT · PAGERPROVISIONERFRAGMENT.KT</sub></p>
@@ -887,8 +1199,7 @@ class PagerProvisionerFragment : Fragment(R.layout.fragment_provisioner) {
 ```
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-F3F4F6?style=for-the-badge&logo=kotlin&logoColor=111111"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-111111?style=for-the-badge&logo=openjdk&logoColor=white"/>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
 </p>
 
 <p><sub>FRAGMENT · PAGERPROVISIONERFRAGMENT.JAVA</sub></p>
@@ -928,7 +1239,7 @@ These are **not** implementation steps. They are how you shape the same `initial
 
 **How:** `attach(activity, owner)` with **no serial** (and do not call `setSerial`).
 
-**What happens:** USB auto-connects when permission is granted. Wireless pairing advertisements open the six-digit overlay (unless that peer is already pairing, connecting, or READY). Several devices can appear in `discoveredDevices` / `connectedDevices`. The connected-device / DPC overlay stays off because it requires a serial lock.
+**What happens:** USB auto-connects when permission is granted. Wireless pairing advertisements open the six-digit overlay (unless that peer is already pairing, connecting, or READY). QR does **not** auto-open without a serial; call `openQRToScan()` if you want the QR overlay. See **QR pairing**. Several devices can appear in `discoveredDevices` / `connectedDevices`. The connected-device / DPC overlay stays off because it requires a serial lock.
 
 ## Single pairing mode (serial lock)
 
@@ -936,9 +1247,95 @@ These are **not** implementation steps. They are how you shape the same `initial
 
 **How:** `attach(activity, owner, serial)`, or `setSerial` at any time, or confirm a row in `scanThenAttach`.
 
-**What happens:** listing, pairing, and auto-connect follow that serial. Other sessions are disconnected to match it. After pairing closes and ADB is authorized, the connected-device dialog can appear (`showProvisionerDialog` and `enableSingleModeAutomationDialog`). Auto-provision still needs package + URL; without them the dialog lists DPC components for Make / Remove owner.
+**What happens:** listing, pairing, and auto-connect follow that serial. Other sessions are disconnected to match it. An unpaired wireless device auto-opens the QR overlay when `enableQRPairing` is true (see **QR pairing**). After pairing closes and ADB is authorized, the connected-device dialog can appear (`showProvisionerDialog` and `enableSingleModeAutomationDialog`). Auto-provision still needs package + URL; without them the dialog lists DPC components for Make / Remove owner.
 
 Clear with `clearSerial()` or `clearAutomationAndSerial()`.
+
+With `enableSingleModeQRPairCodeLauncher = true`, QR and passcode FABs appear on this serial-locked host (see **Single-mode QR / pair-code launcher**). The larger provision FAB is on by default (`enableSingleModeProvisioningFloating`); see **Single-mode provisioning FAB**.
+
+## QR pairing
+
+**Use when:** the operator should pair over Wi-Fi by scanning a QR on the **host**, instead of (or as well as) typing a six-digit pairing code.
+
+**How:** leave `enableQRPairing` at its default `true` on `initialize`. A host screen must be attached. With a **serial lock**, QR auto-opens when an unpaired discoverable wireless device is on the LAN. With **no serial**, QR never auto-opens — call `openQRToScan()` from your own UI (the sample apps use a toolbar QR icon). Pass `enableQRPairing = false` to hide QR entirely; six-digit pairing stays as in v1.2.0.
+
+**What happens:** One overlay serves both modes. In QR mode the host shows a scannable code labeled with the **host app name** (`android:label`). On the pairing device: Developer options → Wireless debugging → **Pair device with QR code**, then scan. After a successful scan the SDK pairs and connects. Progress is `onQRPairCodeStatusUpdate` (`PAIRING_STARTED` → `PAIRING_ESTABLISHED` → `CONNECTION_STARTED` → `CONNECTION_ESTABLISHED`) — the same sequence as six-digit pairing.
+
+If the phone opens **Pair device with pairing code** while QR is showing, the overlay switches to six-digit (`onPairingModeSwitch(QRTOPAIRCODE)`). Switching back fires `PAIRCODETOQR`. Invoked / closed do **not** fire on a switch.
+
+The overlay closes if Wireless debugging is turned off, or once that device is connected. Close in QR mode fires `onQRDialogClosed` and does not auto-reopen. Call `openQRToScan()` to show it again.
+
+`pairingCodeHandler` only replaces the **six-digit** UI. The QR view is always the SDK overlay (same `pairingColors` / watermark).
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>APPLICATION · QR OPTIONS</sub></p>
+
+```kotlin
+ProvisionerJatt.initialize(
+    this,
+    ProvisionerOptions(
+        enableQRPairing = true,
+        qrDisabledMessage = ProvisionerOptions.DEFAULT_QR_DISABLED_MESSAGE,
+        qrNoDevicesMessage = ProvisionerOptions.DEFAULT_QR_NO_DEVICES_MESSAGE,
+        pairCodeErrorMessage = ProvisionerOptions.DEFAULT_PAIR_CODE_ERROR_MESSAGE,
+    ),
+)
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>APPLICATION · QR OPTIONS</sub></p>
+
+```java
+ProvisionerJatt.initialize(this, ProvisionerOptions.from(this));
+// enableQRPairing is the 11th ProvisionerOptions argument (default true).
+// Then qrDisabledMessage, pairCodeErrorMessage, qrNoDevicesMessage,
+// enableDismissDialogWhenTappedOutside. Full constructor is under Initialize.
+```
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>ACTIVITY · OPEN QR / PAIR CODE</sub></p>
+
+```kotlin
+client.openQRToScan()       // QR icon / after Close
+client.openPairingDialog()  // passcode icon / after Close
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>ACTIVITY · OPEN QR / PAIR CODE</sub></p>
+
+```java
+client.openQRToScan();
+client.openPairingDialog();
+```
+
+| Situation | Result |
+| --- | --- |
+| `enableQRPairing` true + **serial** + unpaired discoverable wireless device | QR auto-opens (`onQRDialogInvoked`) |
+| `enableQRPairing` true, **no serial** | QR only via `openQRToScan()` |
+| `openQRToScan()` while QR is disabled | Toast `qrDisabledMessage`, returns `false` |
+| `openQRToScan()` with no unpaired discoverable wireless device | Toast `qrNoDevicesMessage`, returns `false` |
+| Phone opens pairing code while QR is showing | Same overlay → six-digit, `onPairingModeSwitch(QRTOPAIRCODE)` |
+| Overlay switches six-digit → QR | `onPairingModeSwitch(PAIRCODETOQR)` |
+| Overlay closes in QR mode | `onQRDialogClosed` |
+| Overlay closes in six-digit mode | `onPairingDialogClosed` |
+| Pairing then connection (QR or six-digit) | `onQRPairCodeStatusUpdate` |
+| `enableQRPairing` false | QR never appears; pair-code behavior matches v1.2.0 |
+
+`openQRToScan` / `openPairingDialog` contracts are under **Exposed functions**. Callbacks are under **`ProvisionerJattListener`**.
+
+Optional serial-locked FABs that call those functions are under **Single-mode QR / pair-code launcher**.
 
 ## Overlay automate
 
@@ -950,11 +1347,266 @@ Clear with `clearSerial()` or `clearAutomationAndSerial()`.
 
 `setAutomation` returns `false` if the package name or URL is missing/invalid. URL must be HTTPS.
 
+## Single-mode QR / pair-code launcher
+
+**Use when:** this host is serial-locked and you want QR + six-digit pairing buttons **without** adding anything to the host layout.
+
+**How:** `enableSingleModeQRPairCodeLauncher = true` on `initialize`. Optional `qrSingleModeIcon` / `pairCodeSingleModeIcon` (`@DrawableRes`; omit or pass `null` for the SDK icons). Colors come from `pairingColors` (FAB fill is `accent`, icon is `onAccent`). Default is **false** — nothing is drawn until you opt in.
+
+**What happens:** while a host is attached **and a serial is set**, the SDK adds two floating action buttons at the **bottom-end** of that window: **QR above passcode**. They do not require a host `FloatingActionButton`, Compose `IconButton`, or XML widget. QR calls `openQRToScan()`. Passcode calls `openPairingDialog()`. Those calls keep the same toasts and return values as a host-written button. Colors follow `pairingColors` (`accent` fill, `onAccent` icon). Taps use a themed bounded ripple and haptic feedback when `enableVibrationFeedback` is true. The FABs hide while the pairing / QR overlay **or** the connected-device dialog is open, when the serial is cleared, on `detach`, and when the flag is false.
+
+The provision FAB is a **separate** flag (`enableSingleModeProvisioningFloating`, default true) and sits under the passcode button when both are on. See **Single-mode provisioning FAB**.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>APPLICATION · SINGLE-MODE LAUNCHER</sub></p>
+
+```kotlin
+ProvisionerJatt.initialize(
+    this,
+    ProvisionerOptions(
+        enableSingleModeQRPairCodeLauncher = true,
+        qrSingleModeIcon = null,          // SDK QR icon
+        pairCodeSingleModeIcon = null,    // SDK passcode icon
+        enableSingleModeProvisioningFloating = true,
+        // qrSingleModeIcon = R.drawable.my_qr,
+        // pairCodeSingleModeIcon = R.drawable.my_passcode,
+        // singleModeProvisionFloatingIcon = R.drawable.my_provision,
+    ),
+)
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>APPLICATION · SINGLE-MODE LAUNCHER</sub></p>
+
+```java
+// enableSingleModeQRPairCodeLauncher is the 16th ProvisionerOptions argument (default false).
+// Then qrSingleModeIcon, pairCodeSingleModeIcon (null = SDK drawables).
+// enableSingleModeProvisioningFloating is 19th (default true), then not-connected message, then icon.
+// Full constructor is under Initialize.
+ProvisionerOptions defaults = ProvisionerOptions.from(this);
+ProvisionerJatt.initialize(
+    this,
+    new ProvisionerOptions(
+        PairingDialogColors.from(this),
+        null,
+        null,
+        defaults.getShowProvisionerDialog(),
+        defaults.getEnableVibrationFeedback(),
+        defaults.getEnableConfirmation(),
+        defaults.getEnableToastAlerts(),
+        defaults.getEnableSingleModeAutomationDialog(),
+        defaults.getEnableRememberAndReconnect(),
+        defaults.getEnableReconnectProgressToast(),
+        defaults.getEnableQRPairing(),
+        defaults.getQrDisabledMessage(),
+        defaults.getPairCodeErrorMessage(),
+        defaults.getQrNoDevicesMessage(),
+        defaults.getEnableDismissDialogWhenTappedOutside(),
+        true,
+        null,
+        null,
+        true,
+        defaults.getSingleModeProvisionFloatingNotConnectedMessage(),
+        null
+    )
+);
+```
+
+| Guard / value | Default | Result |
+| --- | --- | --- |
+| `enableSingleModeQRPairCodeLauncher` false | **false** | No FABs, even with a serial |
+| Flag true, **no serial** | — | No FABs |
+| Flag true + **serial** on an attached host | — | QR FAB above passcode FAB, bottom-end |
+| `qrSingleModeIcon` / `pairCodeSingleModeIcon` null or `0` | SDK icons | Default QR / passcode glyphs, tinted |
+| Custom `@DrawableRes` | — | Your drawable, tinted with `onAccent` |
+| Pairing / QR overlay or connected-device dialog open | — | FABs hidden until that overlay closes |
+| `clearSerial()` / `detach` | — | FABs removed |
+
+You can still call `openQRToScan()` / `openPairingDialog()` from your own UI. The launcher does not replace those APIs.
+
+## Single-mode provisioning FAB
+
+**Use when:** this host is serial-locked and you want a provision button **without** adding anything to the host layout. Independent of the QR/passcode launcher.
+
+**How:** leave `enableSingleModeProvisioningFloating` at its default `true` on `initialize`. Optional `singleModeProvisionFloatingIcon` (`@DrawableRes`; omit or pass `null` for the SDK phone+gear icon) and `singleModeProvisionFloatingNotConnectedMessage` (default `Device not connected`). Colors come from `pairingColors` (FAB fill is `accent`, icon is `onAccent`). Pass `false` to hide it.
+
+**What happens:** while a host is attached **and a serial is set**, the SDK adds a **larger** floating action button at the bottom-end, **under** the passcode FAB when the QR/passcode launcher is also on. If that launcher is off, the provision FAB stands alone. Colors follow `pairingColors`. Tap uses a themed bounded ripple, haptic feedback (`enableVibrationFeedback`), and `openProvisioningAutomation()`: a connected (`READY`) device opens the connected-device / DPC dialog; otherwise the not-connected toast is shown. The FAB hides while the pairing / QR overlay or that connected-device dialog is open, when the serial is cleared, on `detach`, and when the flag is false.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>APPLICATION · PROVISION FAB</sub></p>
+
+```kotlin
+ProvisionerJatt.initialize(
+    this,
+    ProvisionerOptions(
+        enableSingleModeProvisioningFloating = true,
+        singleModeProvisionFloatingNotConnectedMessage =
+            ProvisionerOptions.DEFAULT_PROVISION_FLOATING_NOT_CONNECTED_MESSAGE,
+        singleModeProvisionFloatingIcon = null, // SDK provision icon
+        // singleModeProvisionFloatingIcon = R.drawable.my_provision,
+    ),
+)
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>APPLICATION · PROVISION FAB</sub></p>
+
+```java
+ProvisionerOptions defaults = ProvisionerOptions.from(this);
+ProvisionerJatt.initialize(
+    this,
+    new ProvisionerOptions(
+        PairingDialogColors.from(this),
+        null,
+        null,
+        defaults.getShowProvisionerDialog(),
+        defaults.getEnableVibrationFeedback(),
+        defaults.getEnableConfirmation(),
+        defaults.getEnableToastAlerts(),
+        defaults.getEnableSingleModeAutomationDialog(),
+        defaults.getEnableRememberAndReconnect(),
+        defaults.getEnableReconnectProgressToast(),
+        defaults.getEnableQRPairing(),
+        defaults.getQrDisabledMessage(),
+        defaults.getPairCodeErrorMessage(),
+        defaults.getQrNoDevicesMessage(),
+        defaults.getEnableDismissDialogWhenTappedOutside(),
+        defaults.getEnableSingleModeQRPairCodeLauncher(),
+        null,
+        null,
+        true, // enableSingleModeProvisioningFloating; default true
+        ProvisionerOptions.DEFAULT_PROVISION_FLOATING_NOT_CONNECTED_MESSAGE,
+        null  // singleModeProvisionFloatingIcon; null = SDK icon
+    )
+);
+```
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>ACTIVITY · OPEN PROVISIONING</sub></p>
+
+```kotlin
+client.openProvisioningAutomation()
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>ACTIVITY · OPEN PROVISIONING</sub></p>
+
+```java
+client.openProvisioningAutomation();
+```
+
+| Guard / value | Default | Result |
+| --- | --- | --- |
+| `enableSingleModeProvisioningFloating` false | `true` | No provision FAB |
+| Flag true, **no serial** | — | No provision FAB |
+| Flag true + **serial** on an attached host | — | Larger provision FAB under passcode (or alone) |
+| `singleModeProvisionFloatingIcon` null or `0` | SDK icon | Default provision glyph, tinted |
+| Custom `@DrawableRes` | — | Your drawable, tinted with `onAccent` |
+| No `READY` device | — | Toast `singleModeProvisionFloatingNotConnectedMessage` |
+| At least one `READY` device | — | Connected-device / DPC dialog |
+| Pairing / QR overlay or connected-device dialog open | — | FAB hidden until that overlay closes |
+
+You can still call `openProvisioningAutomation()` from your own UI. The FAB does not replace that API.
+
+## Device list widget
+
+**Use when:** the host should list connected or discoverable devices with the same cards the sample apps use, instead of declaring a new adapter / item layout.
+
+**How:** pass `DeviceListKind.CONNECTED` or `DeviceListKind.DISCOVERABLE` plus that list (`client.connectedDevices` / `client.discoveredDevices`, or a filtered `client.state`). Compose hosts call `ProvisionerJattDeviceList`. XML hosts inflate `ProvisionerJattDeviceListView` (`app:pjattListKind="connected"` or `"discoverable"`). Cards use the original sample layout (no logo on each row). Colors follow `pairingColors` from `initialize`, or the SDK default palette. Pairing / QR overlays still use `pairingWatermarkResId`; the list widget does not.
+
+**What happens:** `CONNECTED` rows show disconnect (wireless), DPC scan / make / remove owner, or live automation stages. `DISCOVERABLE` rows show status only. Empty lists use the SDK empty cards (`connected_empty` / `devices_empty`). Actions call back into the host (`scan`, `makeDeviceOwner`, `removeOwner`, `retryProvisioning`, `disconnectWireless`). Those buttons use themed bounded ripples and haptic feedback when `enableVibrationFeedback` is true.
+
+<p>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
+</p>
+
+<p><sub>COMPOSE · DEVICE LIST</sub></p>
+
+```kotlin
+ProvisionerJattDeviceList(
+    kind = DeviceListKind.CONNECTED,
+    devices = connected,
+    automationConfigured = state.settings.automationConfigured,
+    scanning = state.scanning,
+    onScan = client::scan,
+    onMakeOwner = client::makeDeviceOwner,
+    onRemoveOwner = client::removeOwner,
+    onRetryProvisioning = client::retryProvisioning,
+    onDisconnectWireless = client::disconnectWireless,
+)
+ProvisionerJattDeviceList(
+    kind = DeviceListKind.DISCOVERABLE,
+    devices = discovered,
+    scanning = state.scanning,
+)
+```
+
+<p>
+  <img alt="Java" src="docs/readme/lang-tab-java.svg" width="280" height="56"/>
+</p>
+
+<p><sub>XML · DEVICE LIST</sub></p>
+
+```xml
+<com.beastblocks.provisionerjattsdk.ui.ProvisionerJattDeviceListView
+    android:id="@+id/connected_list"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:pjattListKind="connected"
+    app:pjattListScrollable="false" />
+```
+
+```java
+ProvisionerJattDeviceListView list = findViewById(R.id.connected_list);
+list.bind(
+    DeviceListKind.CONNECTED,
+    client.getConnectedDevices().getValue(),
+    state.getScanning(),
+    state.getSettings().getAutomationConfigured()
+);
+list.setCallbacks((action, deviceId, component) -> {
+    switch (action) {
+        case SCAN: /* client.scan */ break;
+        case MAKE_OWNER: /* client.makeDeviceOwner */ break;
+        case REMOVE_OWNER: /* client.removeOwner */ break;
+        case RETRY: /* client.retryProvisioning */ break;
+        case DISCONNECT: /* client.disconnectWireless */ break;
+    }
+});
+list.setScanning(state.getScanning());
+list.submitList(client.getConnectedDevices().getValue());
+list.setKind(DeviceListKind.DISCOVERABLE);
+list.refresh();
+```
+
+XML update helpers: `setListKind` / `setKind`, `setDevices` / `submitList`, `setScanning`, `setAutomationConfigured`, `setScrollable`, `setListener` / `setCallbacks`, `bind(...)`, `refresh()`. Use `pjattListScrollable="true"` when the view fills a pane and should scroll itself; keep it `false` inside a host `ScrollView`.
+
 ## Pairing criteria (when the overlay opens)
 
 These rules are built in. You do not implement them.
 
 - A pairing-code advertisement while that device is **already pairing, connecting, or READY** does **not** open a second pairing dialog — even if the user reopens Wireless debugging → pairing code on the phone.
+- Closing the pairing-code overlay without pairing leaves it closed until the phone (or another phone) opens pairing code again, or the host calls `openPairingDialog()`. That call reopens the same overlay (device tags when more than one advertisement is present). If nothing is advertising a pairing code, it stays closed and shows `pairCodeErrorMessage`.
+- **QR** overlay rules (auto-open with serial, `openQRToScan()`, mode switch, callbacks) are under **QR pairing**. After a successful pair from `openQRToScan()` or `openPairingDialog()`, the overlay stays closed. With **no serial**, QR does not come back on its own.
+- A pairing-code advertisement for a **remembered** peer, after a **host-side** drop, starts the **20s reconnect** window instead of the dialog (if remember/reconnect is on). If a pairing screen is still advertised, the countdown toast is shown. When the timer ends or **RECONNECT** is tapped and the advertisement is still open, the pairing dialog opens.
 - A pairing-code advertisement for a **remembered** peer, after a **host-side** drop, starts the **20s reconnect** window instead of the dialog (if remember/reconnect is on). If a pairing screen is still advertised, the countdown toast is shown. When the timer ends or **RECONNECT** is tapped and the advertisement is still open, the pairing dialog opens.
 - A drop **from the pairing device** (it leaves discovery) is forgotten immediately. No 20s reconnect.
 - `disconnectWireless` / dialog **Disconnect** also forgets, so the next advertisement can start a fresh pair.
@@ -964,11 +1616,12 @@ These rules are built in. You do not implement them.
 
 **Use when:** you already have a six-digit screen and do not want the SDK dialog.
 
-**How:** set `pairingCodeHandler` on `initialize`. The library will not show its dialog. Update that UI in place when `onPairingRequired` fires again — do not stack a second sheet.
+**How:** set `pairingCodeHandler` on `initialize`. The library will not show its **six-digit** dialog. Update that UI in place when `onPairingRequired` fires again — do not stack a second sheet.
+
+The **QR** view is not replaced. It stays the SDK overlay even when this handler is set (unless `enableQRPairing` is false).
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-111111?style=for-the-badge&logo=kotlin&logoColor=white"/>
-  <img alt="Java" src="https://img.shields.io/badge/Java-F3F4F6?style=for-the-badge&logo=openjdk&logoColor=111111"/>
+  <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
 </p>
 
 ```kotlin
@@ -992,11 +1645,13 @@ ProvisionerJatt.initialize(
 // From your UI: client.submitPairingCode("123456"); client.dismissPairing();
 ```
 
-Default look: omit the handler. Pass `pairingWatermarkResId` and/or `pairingColors` (or `PairingDialogColors.from(this)`) to theme the SDK overlay.
+Default look: omit the handler. Pass `pairingWatermarkResId` and/or `pairingColors` (or `PairingDialogColors.from(this)`) to theme the SDK overlay (six-digit and QR).
 
 ## Nearby / USB picker
 
 Covered under **Attach SDK**. Extra behaviour: the list is live USB **and** wireless. Rows appear, update, and disappear as devices are plugged, discovered, connected, or leave. USB permission is requested only for a newly plugged device the host does not already have. A USB row without permission stays until the user allows it and a serial is available. Same `pairingColors` / watermark as other dialogs.
+
+The AAR declares `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` (all supported APIs) and `NEARBY_WIFI_DEVICES` (API 33+) so a host that also uses location is not stripped at merge. At runtime the SDK only prompts for location on API 32 and below, and for nearby Wi-Fi on API 33+. The host still requests location itself when it needs GPS or fused location.
 
 ## Keep-awake
 
@@ -1008,24 +1663,49 @@ While a host is attached, `FLAG_KEEP_SCREEN_ON` plus a wake lock keep that scree
 
 ## Confirmations, haptics, toasts
 
-`enableConfirmation` — Confirm Device, Pair, Disconnect. `enableVibrationFeedback` — dialogs, scan select, pairing digits, automation steps. `enableToastAlerts` — after scan confirm and after pairing plus connection. All default true.
+`enableConfirmation` — Confirm Device, Pair, Disconnect. `enableVibrationFeedback` — dialogs, scan select, pairing digits, automation steps, FAB taps, and list-item actions. `enableToastAlerts` — after scan confirm and after pairing plus connection. All default true.
+
+`openQRToScan()` / `openPairingDialog()` / `openProvisioningAutomation()` toasts (`qrDisabledMessage`, `qrNoDevicesMessage`, `pairCodeErrorMessage`, `singleModeProvisionFloatingNotConnectedMessage`) still show even when `enableToastAlerts` is false — those calls are explicit host actions.
+
+## Dismiss on outside tap
+
+`enableDismissDialogWhenTappedOutside` (default `true`): tap the dimmed area to close SDK dialogs (Nearby/USB picker, pairing/QR overlay, connected-device, confirmations, alerts). Pass `false` to keep Close / Confirm / Cancel and system Back only.
 
 ## Host checklist
 
 - [ ] `minSdk` 26+ · Gradle 8.13+
-- [ ] JitPack `implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.0")` — one line, POM included
+- [ ] JitPack `implementation("com.github.jatinsinghsatija:Provisioner-Jatt-SDK:v1.2.1")` — one line, POM included
 - [ ] `google()`, `mavenCentral()`, `jitpack.io`
 - [ ] `Application` registered, `initialize` in `onCreate`
 - [ ] `attach` **or** `scanThenAttach` / `scanThenAutomateThenAttach` on every provisioning Activity or Fragment
+- [ ] Optional: `openQRToScan()` / `openPairingDialog()` / `openProvisioningAutomation()` from your own buttons; or `enableSingleModeQRPairCodeLauncher` / `enableSingleModeProvisioningFloating` for SDK FABs when a serial is set
+- [ ] Optional: `ProvisionerJattFrp.addFRPAccount(activity, callback, serverClientId)` / `setFRP(token)` / `setOrganizationName(orgName)` on a device-owner host app. Pass the Google OAuth **web** client ID to `addFRPAccount`, not to `initialize`. See **Get a Web client ID**
+- [ ] Optional: `ProvisionerJattDeviceList` / `ProvisionerJattDeviceListView` instead of a host-written device adapter
+- [ ] Optional: `ProvisionerJattListener` on attach
 - [ ] **No** `USB_DEVICE_ATTACHED` on your Activity
 - [ ] Physical USB host and/or Android 11+ wireless debugging on the target device
 
-The first USB attach still needs the user to tap **Allow** on the device. Wireless still needs Wireless debugging + the six-digit code. The SDK does not bypass ADB authorization or Android enterprise policy.
+The first USB attach still needs the user to tap **Allow** on the device. Wireless still needs Wireless debugging plus a **QR scan of the host** or the **six-digit pairing code**. The SDK does not bypass ADB authorization or Android enterprise policy.
+
+---
+
+# Get a Web client ID
+
+`addFRPAccount` needs a Google OAuth **Web** client ID as `serverClientId`. That is not an Android client ID, and it is not passed to `initialize`. Create it in Firebase:
+
+1. Open the [Firebase Console](https://console.firebase.google.com/) and sign in.
+2. Create a Firebase project, or open the project that will serve this host app.
+3. Open **Project settings** (gear) → **Your apps**. Add an **Android** app if one is not listed. The Android package name must match the host `applicationId`. Add the app’s **SHA-1** and **SHA-256** from the debug and release signing certificates so Google Sign-In can run on a device.
+4. Open **Authentication** → **Sign-in method**. Enable **Google** and save.
+5. On the Google provider page, copy the **Web client ID**. It ends with `.apps.googleusercontent.com`. You can also find it under **Project settings** → **General**.
+6. Pass that string as the last argument of `ProvisionerJattFrp.addFRPAccount`. Hosts often keep it in a string resource and pass `getString(R.string.default_web_client_id)`.
+
+Do not use the **Android** OAuth client ID for `serverClientId`.
 
 ---
 
 <p align="center">
-  <img src="example/src/main/res/drawable/logo_provisioner.png" alt="Provisioner Jatt" width="96"/>
+  <img src="docs/readme/logo_provisioner.png" alt="Provisioner Jatt" width="96"/>
   <br/>
-  <sub>Provisioner Jatt SDK · v1.2.0 · <code>com.beastblocks.provisionerjattsdk</code></sub>
+  <sub>Provisioner Jatt SDK · v1.2.1 · <code>com.beastblocks.provisionerjattsdk</code></sub>
 </p>

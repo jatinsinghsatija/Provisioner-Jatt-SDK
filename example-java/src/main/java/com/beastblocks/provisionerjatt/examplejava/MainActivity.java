@@ -7,8 +7,6 @@ import android.os.Looper;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -17,12 +15,15 @@ import com.beastblocks.provisionerjattsdk.ProvisionerClient;
 import com.beastblocks.provisionerjattsdk.ProvisionerJatt;
 import com.beastblocks.provisionerjattsdk.domain.ConnectionState;
 import com.beastblocks.provisionerjattsdk.domain.DpcComponent;
+import com.beastblocks.provisionerjattsdk.ui.DeviceListAction;
+import com.beastblocks.provisionerjattsdk.ui.DeviceListKind;
 import com.beastblocks.provisionerjattsdk.ui.DeviceUiState;
+import com.beastblocks.provisionerjattsdk.ui.ProvisionerJattDeviceListView;
 import com.beastblocks.provisionerjattsdk.ui.ProvisionerUiState;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends ComponentActivity implements DeviceCards.Listener {
+public class MainActivity extends ComponentActivity {
     private enum Tab { CONNECTED, DISCOVERED }
 
     private ProvisionerClient client;
@@ -43,22 +44,11 @@ public class MainActivity extends ComponentActivity implements DeviceCards.Liste
     private TextView tabConnected;
     private View serialBanner;
     private TextView serialBannerTitle;
-    private View emptyState;
-    private ProgressBar emptyProgress;
-    private TextView emptyTitle;
-    private TextView emptyBody;
-    private LinearLayout deviceList;
+    private ProvisionerJattDeviceListView deviceList;
     private TextView titleDiscovered;
     private TextView titleConnected;
-    private View emptyDiscovered;
-    private View emptyConnected;
-    private ProgressBar emptyDiscoveredProgress;
-    private ProgressBar emptyConnectedProgress;
-    private TextView emptyDiscoveredTitle;
-    private LinearLayout listDiscovered;
-    private LinearLayout listConnected;
-    private View listDiscoveredScroll;
-    private View listConnectedScroll;
+    private ProvisionerJattDeviceListView listDiscovered;
+    private ProvisionerJattDeviceListView listConnected;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -92,32 +82,30 @@ public class MainActivity extends ComponentActivity implements DeviceCards.Liste
 
     private void bindViews() {
         clipCircle(findViewById(R.id.toolbar_logo));
+        findViewById(R.id.btn_qr).setOnClickListener(v -> {
+            if (client != null) client.openQRToScan();
+        });
+        findViewById(R.id.btn_passcode).setOnClickListener(v -> {
+            if (client != null) client.openPairingDialog();
+        });
         findViewById(R.id.btn_automate).setOnClickListener(v -> openAutomation());
         serialBanner = findViewById(R.id.serial_banner);
         serialBannerTitle = findViewById(R.id.serial_banner_title);
 
         tabDiscovered = findViewById(R.id.tab_discovered);
         tabConnected = findViewById(R.id.tab_connected);
-        emptyState = findViewById(R.id.empty_state);
-        emptyProgress = findViewById(R.id.empty_progress);
-        emptyTitle = findViewById(R.id.empty_title);
-        emptyBody = findViewById(R.id.empty_body);
         deviceList = findViewById(R.id.device_list);
         wideLayout = deviceList == null;
 
         if (wideLayout) {
             titleDiscovered = findViewById(R.id.title_discovered);
             titleConnected = findViewById(R.id.title_connected);
-            emptyDiscovered = findViewById(R.id.empty_discovered);
-            emptyConnected = findViewById(R.id.empty_connected);
-            emptyDiscoveredProgress = findViewById(R.id.empty_discovered_progress);
-            emptyConnectedProgress = findViewById(R.id.empty_connected_progress);
-            emptyDiscoveredTitle = findViewById(R.id.empty_discovered_title);
             listDiscovered = findViewById(R.id.list_discovered);
             listConnected = findViewById(R.id.list_connected);
-            listDiscoveredScroll = findViewById(R.id.list_discovered_scroll);
-            listConnectedScroll = findViewById(R.id.list_connected_scroll);
+            wireList(listDiscovered);
+            wireList(listConnected);
         } else {
+            wireList(deviceList);
             tabDiscovered.setOnClickListener(v -> {
                 selectedTab = Tab.DISCOVERED;
                 if (client != null) render(client.getState().getValue());
@@ -126,6 +114,31 @@ public class MainActivity extends ComponentActivity implements DeviceCards.Liste
                 selectedTab = Tab.CONNECTED;
                 if (client != null) render(client.getState().getValue());
             });
+        }
+    }
+
+    private void wireList(ProvisionerJattDeviceListView list) {
+        list.setCallbacks(this::onDeviceAction);
+    }
+
+    private void onDeviceAction(DeviceListAction action, String deviceId, DpcComponent component) {
+        if (client == null) return;
+        switch (action) {
+            case SCAN:
+                SdkCalls.scan(client, deviceId);
+                break;
+            case MAKE_OWNER:
+                SdkCalls.makeDeviceOwner(client, deviceId, component);
+                break;
+            case REMOVE_OWNER:
+                SdkCalls.removeOwner(client, deviceId, component);
+                break;
+            case RETRY:
+                SdkCalls.retryProvisioning(client, deviceId);
+                break;
+            case DISCONNECT:
+                SdkCalls.disconnectWireless(client, deviceId);
+                break;
         }
     }
 
@@ -174,8 +187,18 @@ public class MainActivity extends ComponentActivity implements DeviceCards.Liste
         if (wideLayout) {
             titleDiscovered.setText(getString(R.string.pane_discovered, discovered.size()));
             titleConnected.setText(getString(R.string.pane_connected, connected.size()));
-            bindPane(discovered, state.getScanning(), automation, listDiscovered, listDiscoveredScroll, emptyDiscovered, emptyDiscoveredProgress, emptyDiscoveredTitle, true);
-            bindPane(connected, state.getScanning(), automation, listConnected, listConnectedScroll, emptyConnected, emptyConnectedProgress, findViewById(R.id.empty_connected_title), false);
+            listDiscovered.bind(
+                DeviceListKind.DISCOVERABLE,
+                discovered,
+                state.getScanning(),
+                automation
+            );
+            listConnected.bind(
+                DeviceListKind.CONNECTED,
+                connected,
+                state.getScanning(),
+                automation
+            );
             return;
         }
 
@@ -187,49 +210,12 @@ public class MainActivity extends ComponentActivity implements DeviceCards.Liste
         tabDiscovered.setTextColor(getColor(discoveredSelected ? R.color.brand_orange : R.color.text_secondary));
         tabConnected.setTextColor(getColor(discoveredSelected ? R.color.text_secondary : R.color.brand_orange));
 
-        List<DeviceUiState> visible = discoveredSelected ? discovered : connected;
-        emptyState.setTag(discoveredSelected ? "devices_empty" : "connected_empty");
-        if (visible.isEmpty()) {
-            deviceList.setVisibility(View.GONE);
-            emptyState.setVisibility(View.VISIBLE);
-            emptyProgress.setVisibility(state.getScanning() ? View.VISIBLE : View.GONE);
-            if (discoveredSelected) {
-                emptyTitle.setText(state.getScanning() ? R.string.empty_discovered_scanning : R.string.empty_discovered_title);
-                emptyBody.setText(R.string.empty_discovered_body);
-            } else {
-                emptyTitle.setText(R.string.empty_connected_title);
-                emptyBody.setText(R.string.empty_connected_body);
-            }
-        } else {
-            emptyState.setVisibility(View.GONE);
-            deviceList.setVisibility(View.VISIBLE);
-            DeviceCards.bind(deviceList, visible, automation, this);
-        }
-    }
-
-    private void bindPane(
-        List<DeviceUiState> devices,
-        boolean scanning,
-        boolean automationConfigured,
-        LinearLayout list,
-        View listScroll,
-        View empty,
-        ProgressBar progress,
-        TextView emptyTitle,
-        boolean discovered
-    ) {
-        if (devices.isEmpty()) {
-            listScroll.setVisibility(View.GONE);
-            empty.setVisibility(View.VISIBLE);
-            progress.setVisibility(scanning ? View.VISIBLE : View.GONE);
-            if (discovered) {
-                emptyTitle.setText(scanning ? R.string.empty_discovered_scanning : R.string.empty_discovered_title);
-            }
-        } else {
-            empty.setVisibility(View.GONE);
-            listScroll.setVisibility(View.VISIBLE);
-            DeviceCards.bind(list, devices, automationConfigured, this);
-        }
+        deviceList.bind(
+            discoveredSelected ? DeviceListKind.DISCOVERABLE : DeviceListKind.CONNECTED,
+            discoveredSelected ? discovered : connected,
+            state.getScanning(),
+            automation
+        );
     }
 
     private static void clipCircle(ImageView view) {
@@ -241,30 +227,5 @@ public class MainActivity extends ComponentActivity implements DeviceCards.Liste
             }
         });
         view.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> v.invalidateOutline());
-    }
-
-    @Override
-    public void onScan(String id) {
-        SdkCalls.scan(client, id);
-    }
-
-    @Override
-    public void onMakeOwner(String id, DpcComponent component) {
-        SdkCalls.makeDeviceOwner(client, id, component);
-    }
-
-    @Override
-    public void onRemoveOwner(String id, DpcComponent component) {
-        SdkCalls.removeOwner(client, id, component);
-    }
-
-    @Override
-    public void onRetry(String id) {
-        SdkCalls.retryProvisioning(client, id);
-    }
-
-    @Override
-    public void onDisconnect(String id) {
-        SdkCalls.disconnectWireless(client, id);
     }
 }

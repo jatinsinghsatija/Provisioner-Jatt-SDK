@@ -1,0 +1,16 @@
+---
+description: After SDK changes, publish flattened AAR+POM and point examples at repo/
+alwaysApply: true
+---
+
+# Publish AAR + POM and update examples
+
+Until the user says to stop, every SDK change that should be testable ends with publishing artifacts. Do not wait to be asked.
+
+- Keep examples on `implementation("com.beastblocks:provisioner-jatt:<version>")` from local `repo/`. Never `project(":provisioner-jatt")`.
+- Publish the release AAR into `repo/com/beastblocks/provisioner-jatt/<version>/`.
+- Flatten the POM: no BOM, no Gradle `.module`. Expand Compose BOM versions. Include runtime/api deps (okhttp, dagger, conscrypt, bouncycastle, spake2, zxing-core, firebase-database, play-services-auth, credentials, credentials-play-services-auth, googleid, etc.). Never restore an older flattened POM that would drop a newly added dependency.
+- Delete any `.module` files Gradle wrote. Rewrite md5/sha1/sha256/sha512 for AAR, POM, and `maven-metadata.xml`.
+- Copy `dist/provisioner-jatt-sdk-<version>.aar` via `distAar`.
+- Keep example `versionName` on the same SDK version. Refresh Gradle so examples pick up the overwritten AAR.
+- Do not commit or push unless asked. Do not mention Firebase or LicenseGuard in user-facing README copy.

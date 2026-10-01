@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/provisioner_screen"
     android:layout_width="match_parent"
@@ -52,6 +53,26 @@
                 android:textColor="@color/brand_black"
                 android:textSize="22sp"
                 android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_qr"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/action_qr"
+                android:padding="8dp"
+                android:src="@drawable/ic_qr_code"
+                android:tag="open_qr" />
+
+            <ImageButton
+                android:id="@+id/btn_passcode"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/action_passcode"
+                android:padding="8dp"
+                android:src="@drawable/ic_passcode"
+                android:tag="open_pairing" />
 
             <Button
                 android:id="@+id/btn_automate"
@@ -119,58 +140,13 @@
                         android:textStyle="bold"
                         tools:text="Discovered  0" />
 
-                    <FrameLayout
+                    <com.beastblocks.provisionerjattsdk.ui.ProvisionerJattDeviceListView
+                        android:id="@+id/list_discovered"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:layout_marginTop="14dp">
-
-                        <LinearLayout
-                            android:id="@+id/empty_discovered"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_card"
-                            android:gravity="center_horizontal"
-                            android:orientation="vertical"
-                            android:padding="24dp"
-                            android:tag="devices_empty">
-
-                            <ProgressBar
-                                android:id="@+id/empty_discovered_progress"
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:indeterminateTint="@color/brand_orange"
-                                android:visibility="gone" />
-
-                            <TextView
-                                android:id="@+id/empty_discovered_title"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="12dp"
-                                android:textColor="@color/brand_black"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/empty_discovered_body"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:gravity="center"
-                                android:text="@string/empty_discovered_body" />
-                        </LinearLayout>
-
-                        <ScrollView
-                            android:id="@+id/list_discovered_scroll"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:visibility="gone">
-
-                            <LinearLayout
-                                android:id="@+id/list_discovered"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical" />
-                        </ScrollView>
-                    </FrameLayout>
+                        android:layout_marginTop="14dp"
+                        app:pjattListKind="discoverable"
+                        app:pjattListScrollable="true" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -189,59 +165,13 @@
                         android:textStyle="bold"
                         tools:text="Connected  0" />
 
-                    <FrameLayout
+                    <com.beastblocks.provisionerjattsdk.ui.ProvisionerJattDeviceListView
+                        android:id="@+id/list_connected"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:layout_marginTop="14dp">
-
-                        <LinearLayout
-                            android:id="@+id/empty_connected"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_card"
-                            android:gravity="center_horizontal"
-                            android:orientation="vertical"
-                            android:padding="24dp"
-                            android:tag="connected_empty">
-
-                            <ProgressBar
-                                android:id="@+id/empty_connected_progress"
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:indeterminateTint="@color/brand_orange"
-                                android:visibility="gone" />
-
-                            <TextView
-                                android:id="@+id/empty_connected_title"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="12dp"
-                                android:text="@string/empty_connected_title"
-                                android:textColor="@color/brand_black"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/empty_connected_body"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:gravity="center"
-                                android:text="@string/empty_connected_body" />
-                        </LinearLayout>
-
-                        <ScrollView
-                            android:id="@+id/list_connected_scroll"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:visibility="gone">
-
-                            <LinearLayout
-                                android:id="@+id/list_connected"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical" />
-                        </ScrollView>
-                    </FrameLayout>
+                        android:layout_marginTop="14dp"
+                        app:pjattListKind="connected"
+                        app:pjattListScrollable="true" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

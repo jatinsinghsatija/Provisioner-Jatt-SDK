@@ -4,13 +4,11 @@ import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
-import com.beastblocks.provisionerjattsdk.data.adb.WirelessPairingOffer
 import com.beastblocks.provisionerjattsdk.domain.ConnectionState
 import com.beastblocks.provisionerjattsdk.domain.DeviceId
 import com.beastblocks.provisionerjattsdk.domain.DeviceTarget
@@ -18,7 +16,6 @@ import com.beastblocks.provisionerjattsdk.domain.DpcComponent
 import com.beastblocks.provisionerjattsdk.domain.ProvisioningSettings
 import com.beastblocks.provisionerjattsdk.domain.ProvisioningStage
 import com.beastblocks.provisionerjattsdk.domain.TransportKind
-import com.beastblocks.provisionerjattsdk.ui.DefaultPairingDialog
 import com.beastblocks.provisionerjattsdk.ui.DeviceUiState
 import com.beastblocks.provisionerjattsdk.ui.ManualDeviceState
 import com.beastblocks.provisionerjattsdk.ui.ProvisionerJattTheme
@@ -34,38 +31,13 @@ class ProvisionerScreenTest {
 
         compose.onNodeWithTag("connected_empty").assertIsDisplayed()
         compose.onNodeWithTag("automate_provisioning").assertIsDisplayed()
+        compose.onNodeWithTag("open_qr").assertIsDisplayed()
+        compose.onNodeWithTag("open_pairing").assertIsDisplayed()
         compose.onNodeWithTag("tab_discovered").assertIsDisplayed()
         compose.onNodeWithTag("tab_connected").assertIsDisplayed()
         compose.onNodeWithTag("pair_wireless").assertDoesNotExist()
         compose.onNodeWithTag("mode_automated").assertDoesNotExist()
         compose.onNodeWithTag("connect_device").assertDoesNotExist()
-    }
-
-    @Test fun pairingDialogAsksOnlyForTheCode() {
-        compose.setContent {
-            ProvisionerJattTheme {
-                DefaultPairingDialog(
-                    offers = listOf(
-                        WirelessPairingOffer(
-                            host = "192.0.2.2",
-                            pairingPort = 37123,
-                            connectPort = 42123,
-                            serial = "ABC",
-                        ),
-                    ),
-                    selectedKey = "192.0.2.2:37123",
-                    result = null,
-                    watermarkResId = null,
-                    onDismiss = {},
-                    onPair = {},
-                )
-            }
-        }
-
-        compose.onNodeWithTag("pairing_code").assertIsDisplayed()
-        compose.onNodeWithTag("pairing_summary").assertTextContains("192.0.2.2")
-        compose.onNodeWithTag("pairing_summary").assertTextContains("37123")
-        compose.onNodeWithTag("pairing_summary").assertTextContains("42123")
     }
 
     @Test fun automateSheetShowsPersistedSettings() {

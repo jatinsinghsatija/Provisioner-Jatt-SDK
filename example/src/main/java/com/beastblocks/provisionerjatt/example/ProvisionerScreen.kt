@@ -12,20 +12,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -51,7 +48,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -60,13 +56,13 @@ import com.beastblocks.provisionerjattsdk.domain.ConnectionState
 import com.beastblocks.provisionerjattsdk.domain.DeviceId
 import com.beastblocks.provisionerjattsdk.domain.DpcComponent
 import com.beastblocks.provisionerjattsdk.domain.ProvisioningSettings
-import com.beastblocks.provisionerjattsdk.domain.ProvisioningStage
-import com.beastblocks.provisionerjattsdk.domain.TransportKind
 import com.beastblocks.provisionerjattsdk.ui.BrandBackdrop
+import com.beastblocks.provisionerjattsdk.ui.DeviceListKind
 import com.beastblocks.provisionerjattsdk.ui.DeviceUiState
 import com.beastblocks.provisionerjattsdk.ui.NeumorphicButton
 import com.beastblocks.provisionerjattsdk.ui.NeumorphicSurface
 import com.beastblocks.provisionerjattsdk.ui.NeumorphicTheme
+import com.beastblocks.provisionerjattsdk.ui.ProvisionerJattDeviceList
 import com.beastblocks.provisionerjattsdk.ui.ProvisionerUiState
 import com.beastblocks.provisionerjattsdk.ui.neumorphicSurface
 
@@ -78,7 +74,8 @@ private val ListingWatermark = R.drawable.logo_provisioner
 @Composable
 fun ProvisionerScreen(
     state: ProvisionerUiState,
-    onScanThenAttach: () -> Unit = {},
+    onOpenQr: () -> Unit = {},
+    onOpenPairing: () -> Unit = {},
     onSaveAutomation: (String, String) -> Boolean,
     onSetSerial: (String) -> Boolean,
     onClearAutomation: () -> Boolean,
@@ -130,15 +127,24 @@ fun ProvisionerScreen(
                         }
                     },
                     actions = {
-                        TextButton(
-                            onClick = onScanThenAttach,
-                            modifier = Modifier.testTag("scan_then_attach"),
+                        IconButton(
+                            onClick = onOpenQr,
+                            modifier = Modifier.testTag("open_qr"),
                         ) {
-                            Text(
-                                "Nearby/USB",
-                                color = colors.accent,
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1,
+                            Icon(
+                                painter = painterResource(R.drawable.ic_qr_code),
+                                contentDescription = stringResource(R.string.action_qr),
+                                tint = colors.accent,
+                            )
+                        }
+                        IconButton(
+                            onClick = onOpenPairing,
+                            modifier = Modifier.testTag("open_pairing"),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_passcode),
+                                contentDescription = stringResource(R.string.action_passcode),
+                                tint = colors.accent,
                             )
                         }
                         TextButton(
@@ -146,7 +152,7 @@ fun ProvisionerScreen(
                             modifier = Modifier.testTag("automate_provisioning"),
                         ) {
                             Text(
-                                "Automate provisioning",
+                                stringResource(R.string.automate_provisioning),
                                 color = colors.accent,
                                 style = MaterialTheme.typography.labelLarge,
                                 maxLines = 1,
@@ -197,25 +203,23 @@ fun ProvisionerScreen(
                         if (state.settings.hasSerialFilter) {
                             item { SerialLockBanner(settings = state.settings) }
                         }
-                        if (visible.isEmpty()) {
-                            item {
-                                EmptyDevices(
-                                    scanning = state.scanning,
-                                    tab = selectedTab,
-                                )
-                            }
-                        } else {
-                            items(visible, key = { it.target.id.value }) { device ->
-                                DeviceCard(
-                                    device = device,
-                                    automationConfigured = state.settings.automationConfigured,
-                                    onScan = { onScan(device.target.id) },
-                                    onMakeOwner = { onMakeOwner(device.target.id, it) },
-                                    onRemoveOwner = { onRemoveOwner(device.target.id, it) },
-                                    onRetryProvisioning = { onRetryProvisioning(device.target.id) },
-                                    onDisconnectWireless = { onDisconnectWireless(device.target.id) },
-                                )
-                            }
+                        item {
+                            ProvisionerJattDeviceList(
+                                kind = if (selectedTab == DeviceListTab.DISCOVERED) {
+                                    DeviceListKind.DISCOVERABLE
+                                } else {
+                                    DeviceListKind.CONNECTED
+                                },
+                                devices = visible,
+                                automationConfigured = state.settings.automationConfigured,
+                                scanning = state.scanning,
+                                scrollable = false,
+                                onScan = onScan,
+                                onMakeOwner = onMakeOwner,
+                                onRemoveOwner = onRemoveOwner,
+                                onRetryProvisioning = onRetryProvisioning,
+                                onDisconnectWireless = onDisconnectWireless,
+                            )
                         }
                     }
                 }
@@ -277,7 +281,7 @@ private fun WideDeviceLists(
         ) {
             DevicePane(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                title = "Discovered",
+                title = stringResource(R.string.pane_discovered),
                 count = discovered.size,
                 devices = discovered,
                 emptyTab = DeviceListTab.DISCOVERED,
@@ -291,7 +295,7 @@ private fun WideDeviceLists(
             )
             DevicePane(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                title = "Connected",
+                title = stringResource(R.string.pane_connected),
                 count = connected.size,
                 devices = connected,
                 emptyTab = DeviceListTab.CONNECTED,
@@ -330,26 +334,23 @@ private fun DevicePane(
             fontWeight = FontWeight.SemiBold,
             color = colors.accent,
         )
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            if (devices.isEmpty()) {
-                item { EmptyDevices(scanning = scanning, tab = emptyTab) }
+        ProvisionerJattDeviceList(
+            kind = if (emptyTab == DeviceListTab.DISCOVERED) {
+                DeviceListKind.DISCOVERABLE
             } else {
-                items(devices, key = { it.target.id.value }) { device ->
-                    DeviceCard(
-                        device = device,
-                        automationConfigured = automationConfigured,
-                        onScan = { onScan(device.target.id) },
-                        onMakeOwner = { onMakeOwner(device.target.id, it) },
-                        onRemoveOwner = { onRemoveOwner(device.target.id, it) },
-                        onRetryProvisioning = { onRetryProvisioning(device.target.id) },
-                        onDisconnectWireless = { onDisconnectWireless(device.target.id) },
-                    )
-                }
-            }
-        }
+                DeviceListKind.CONNECTED
+            },
+            devices = devices,
+            modifier = Modifier.fillMaxSize(),
+            automationConfigured = automationConfigured,
+            scanning = scanning,
+            scrollable = true,
+            onScan = onScan,
+            onMakeOwner = onMakeOwner,
+            onRemoveOwner = onRemoveOwner,
+            onRetryProvisioning = onRetryProvisioning,
+            onDisconnectWireless = onDisconnectWireless,
+        )
     }
 }
 
@@ -372,7 +373,9 @@ private fun DeviceListTabs(
         ) {
             DeviceListTab.entries.forEach { tab ->
                 val count = if (tab == DeviceListTab.DISCOVERED) discoveredCount else connectedCount
-                val label = if (tab == DeviceListTab.DISCOVERED) "Discovered" else "Connected"
+                val label = stringResource(
+                    if (tab == DeviceListTab.DISCOVERED) R.string.pane_discovered else R.string.pane_connected,
+                )
                 val isSelected = selected == tab
                 val interactionSource = remember(tab) { MutableInteractionSource() }
                 Box(
@@ -438,9 +441,9 @@ private fun AutomationSheet(
             .padding(bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Automate provisioning", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.automate_provisioning), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-            "Package + https URL automate DPC install. Serial is independent: when set, only that device is discovered, paired, and connected. After pairing, the SDK shows a connected-device dialog with live steps, or the DPC list if automation is off.",
+            stringResource(R.string.automate_help),
             style = MaterialTheme.typography.bodySmall,
             color = NeumorphicTheme.colors.textSecondary,
         )
@@ -448,16 +451,14 @@ private fun AutomationSheet(
             value = packageName,
             onValueChange = { packageName = it },
             modifier = Modifier.fillMaxWidth().testTag("package_name"),
-            label = { Text("Package name") },
+            label = { Text(stringResource(R.string.package_name)) },
             singleLine = true,
             isError = packageFilled && !packageValid,
             supportingText = {
                 Text(
-                    if (packageFilled && !packageValid) {
-                        "Enter a valid package name, such as com.example.dpc"
-                    } else {
-                        "Example: com.example.dpc"
-                    },
+                    stringResource(
+                        if (packageFilled && !packageValid) R.string.package_error else R.string.package_hint,
+                    ),
                 )
             },
             shape = RoundedCornerShape(14.dp),
@@ -467,17 +468,15 @@ private fun AutomationSheet(
             value = apkUrl,
             onValueChange = { apkUrl = it },
             modifier = Modifier.fillMaxWidth().testTag("apk_url"),
-            label = { Text("App download URL") },
+            label = { Text(stringResource(R.string.apk_url)) },
             singleLine = true,
             isError = urlFilled && !urlValid,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             supportingText = {
                 Text(
-                    if (urlFilled && !urlValid) {
-                        "Enter a valid https:// download URL"
-                    } else {
-                        "Must be a valid https:// URL"
-                    },
+                    stringResource(
+                        if (urlFilled && !urlValid) R.string.apk_error else R.string.apk_hint,
+                    ),
                 )
             },
             shape = RoundedCornerShape(14.dp),
@@ -487,10 +486,10 @@ private fun AutomationSheet(
             value = serialNumber,
             onValueChange = { serialNumber = it },
             modifier = Modifier.fillMaxWidth().testTag("serial_number"),
-            label = { Text("Serial No") },
+            label = { Text(stringResource(R.string.serial_no)) },
             singleLine = true,
             supportingText = {
-                Text("Optional. Leave blank to allow any device. Required for the SDK connected-device dialog.")
+                Text(stringResource(R.string.serial_hint))
             },
             shape = RoundedCornerShape(14.dp),
             colors = neumorphicTextFieldColors(),
@@ -499,19 +498,19 @@ private fun AutomationSheet(
             onClick = { onSave(packageName, apkUrl, serialNumber) },
             enabled = canSave,
             modifier = Modifier.fillMaxWidth().testTag("save_automation"),
-        ) { Text("Save") }
+        ) { Text(stringResource(R.string.save)) }
         if (settings.automationConfigured) {
             TextButton(
                 onClick = onClearAutomation,
                 modifier = Modifier.fillMaxWidth().testTag("clear_automation"),
             ) {
-                Text("Turn off automation")
+                Text(stringResource(R.string.turn_off_automation))
             }
             Text(
                 if (settings.hasSerialFilter) {
-                    "Automation is on for the device with serial ${settings.serialNumber}."
+                    stringResource(R.string.automation_on_serial, settings.serialNumber)
                 } else {
-                    "Automation is on for every newly connected device."
+                    stringResource(R.string.automation_on_all)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = NeumorphicTheme.colors.success,
@@ -522,7 +521,7 @@ private fun AutomationSheet(
                 onClick = onClearSerial,
                 modifier = Modifier.fillMaxWidth().testTag("clear_serial"),
             ) {
-                Text("Clear serial lock")
+                Text(stringResource(R.string.clear_serial_lock))
             }
         }
     }
@@ -540,281 +539,17 @@ private fun SerialLockBanner(settings: ProvisioningSettings) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                "Serial lock  ${settings.serialNumber}",
+                stringResource(R.string.serial_lock_title, settings.serialNumber),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = NeumorphicTheme.colors.accent,
             )
             Text(
-                "Only this device can be discovered, paired, and connected. After pairing and authorization, the SDK connected-device dialog tracks provisioning or DPC actions.",
+                stringResource(R.string.serial_lock_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = NeumorphicTheme.colors.textSecondary,
             )
         }
-    }
-}
-
-@Composable
-private fun EmptyDevices(scanning: Boolean, tab: DeviceListTab) {
-    val tag = if (tab == DeviceListTab.DISCOVERED) "devices_empty" else "connected_empty"
-    NeumorphicSurface(modifier = Modifier.fillMaxWidth().testTag(tag)) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (scanning) CircularProgressIndicator(color = NeumorphicTheme.colors.accent)
-            if (tab == DeviceListTab.CONNECTED) {
-                Text("No connected devices", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "USB devices connect after permission. Wireless devices show up here after pairing.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                Text(
-                    if (scanning) "Scanning for devices…" else "No discovered devices",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    "Connect a phone over USB, or enable Wireless debugging. Pairing is only asked for devices that are not already connected.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeviceCard(
-    device: DeviceUiState,
-    automationConfigured: Boolean,
-    onScan: () -> Unit,
-    onMakeOwner: (DpcComponent) -> Unit,
-    onRemoveOwner: (DpcComponent) -> Unit,
-    onRetryProvisioning: () -> Unit,
-    onDisconnectWireless: () -> Unit,
-) {
-    val wirelessConnected =
-        device.target.transport == TransportKind.WIRELESS &&
-            device.connection == ConnectionState.READY
-    NeumorphicSurface(modifier = Modifier.fillMaxWidth().testTag("device_${device.target.id.value}")) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(device.target.displayName, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        listOfNotNull(
-                            device.target.transport.name.lowercase().replaceFirstChar(Char::uppercase),
-                            device.target.serial,
-                            connectionLabel(device.connection),
-                        ).joinToString(" • "),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    if (device.connection == ConnectionState.CONNECTING) {
-                        CircularProgressIndicator(color = NeumorphicTheme.colors.accent)
-                    }
-                    if (wirelessConnected) {
-                        TextButton(
-                            onClick = onDisconnectWireless,
-                            modifier = Modifier.testTag("disconnect_wireless"),
-                        ) {
-                            Text("Disconnect", color = NeumorphicTheme.colors.accent)
-                        }
-                    }
-                }
-            }
-            ConnectionStatus(device)
-            device.message?.let { ResultText(it) }
-            if (device.connection == ConnectionState.READY) {
-                when {
-                    device.automatedStage is ProvisioningStage.OwnerRemoved ->
-                        AutomatedStage(device.automatedStage, onRetryProvisioning)
-                    automationConfigured -> AutomatedStage(device.automatedStage, onRetryProvisioning)
-                    else -> ManualContent(device, onScan, onMakeOwner, onRemoveOwner)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConnectionStatus(device: DeviceUiState) {
-    val text: String? = when (device.connection) {
-        ConnectionState.DISCOVERED ->
-            if (device.target.transport == TransportKind.USB) {
-                "USB device discovered"
-            } else if (device.previouslyPaired) {
-                "Previously paired"
-            } else {
-                "Waiting for wireless pairing…"
-            }
-        ConnectionState.PERMISSION_REQUIRED -> "Waiting for USB permission…"
-        ConnectionState.CONNECTING ->
-            if (device.previouslyPaired && device.target.transport == TransportKind.WIRELESS) {
-                "Reconnecting to previously paired device…"
-            } else {
-                "Opening ADB connection…"
-            }
-        ConnectionState.UNAUTHORIZED -> "Authorize this computer on the device."
-        ConnectionState.READY -> null
-        ConnectionState.DISCONNECTED -> "Disconnected"
-        ConnectionState.FAILED -> "Connection failed"
-    }
-    if (text != null) {
-        Text(text, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-private fun ManualContent(
-    device: DeviceUiState,
-    onScan: () -> Unit,
-    onMakeOwner: (DpcComponent) -> Unit,
-    onRemoveOwner: (DpcComponent) -> Unit,
-) {
-    var confirmation by remember { mutableStateOf<Pair<Boolean, DpcComponent>?>(null) }
-    HorizontalDivider(color = NeumorphicTheme.colors.darkShadow.copy(alpha = 0.25f))
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("DPC components", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-        TextButton(onClick = onScan, enabled = !device.manual.scanning) { Text("Scan") }
-    }
-    if (device.manual.scanning) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(color = NeumorphicTheme.colors.accent)
-            Text("Scanning device policy components…")
-        }
-    }
-    device.manual.components.forEach { component ->
-        NeumorphicSurface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(component.flattened, fontFamily = FontFamily.Monospace)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NeumorphicButton(
-                        onClick = { confirmation = true to component },
-                        enabled = device.manual.actionInProgress == null,
-                    ) { Text("Make Device Owner") }
-                    if (component.testOnly) {
-                        NeumorphicButton(
-                            onClick = { confirmation = false to component },
-                            enabled = device.manual.actionInProgress == null,
-                            accent = false,
-                            modifier = Modifier.testTag("remove_owner"),
-                        ) { Text("Remove Owner") }
-                    }
-                }
-                if (!component.testOnly) {
-                    Text(
-                        "Remove Owner is hidden because this package is not test-only. Android will reject dpm remove-active-admin.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NeumorphicTheme.colors.textSecondary,
-                    )
-                }
-            }
-        }
-    }
-    if (device.manual.actionInProgress != null) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(color = NeumorphicTheme.colors.accent)
-            Text("Applying command…")
-        }
-    }
-    device.manual.result?.let { ResultText(it) }
-    confirmation?.let { (makeOwner, component) ->
-        AlertDialog(
-            modifier = Modifier.neumorphicSurface(shape = RoundedCornerShape(24.dp)),
-            containerColor = NeumorphicTheme.colors.surface,
-            onDismissRequest = { confirmation = null },
-            title = { Text(if (makeOwner) "Make Device Owner?" else "Remove Owner?") },
-            text = {
-                BrandBackdrop(modifier = Modifier.fillMaxWidth(), watermarkResId = ListingWatermark) {
-                    Text(
-                        (if (makeOwner) "Set" else "Remove") +
-                            " ${component.flattened}? This changes device administration state.",
-                    )
-                }
-            },
-            confirmButton = {
-                NeumorphicButton(onClick = {
-                    confirmation = null
-                    if (makeOwner) onMakeOwner(component) else onRemoveOwner(component)
-                }) { Text("Confirm") }
-            },
-            dismissButton = { TextButton(onClick = { confirmation = null }) { Text("Cancel") } },
-        )
-    }
-}
-
-@Composable
-private fun AutomatedStage(stage: ProvisioningStage, onRetry: () -> Unit) {
-    HorizontalDivider(color = NeumorphicTheme.colors.darkShadow.copy(alpha = 0.25f))
-    if (stage is ProvisioningStage.OwnerRemoved) {
-        Column(
-            modifier = Modifier.testTag("provision_removed"),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            ResultText("Provision Removed")
-            Text(
-                "Device owner ${stage.component.flattened} is no longer set. Redo the full provisioning process.",
-                style = MaterialTheme.typography.bodySmall,
-                color = NeumorphicTheme.colors.textSecondary,
-            )
-            NeumorphicButton(
-                onClick = onRetry,
-                modifier = Modifier.testTag("redo_provisioning"),
-            ) { Text("Redo") }
-        }
-        return
-    }
-    val (label, working) = when (stage) {
-        ProvisioningStage.Idle -> "Waiting for an authorized connection" to false
-        ProvisioningStage.Authenticating -> "Checking authorization" to true
-        ProvisioningStage.Scanning -> "Checking device owner and DPC packages" to true
-        ProvisioningStage.Downloading -> "Downloading APK" to true
-        ProvisioningStage.Pushing -> "Sending APK to the device" to true
-        ProvisioningStage.Installing -> "Installing APK" to true
-        ProvisioningStage.SettingOwner -> "Setting device owner" to true
-        ProvisioningStage.Launching -> "Launching the device owner app" to true
-        is ProvisioningStage.Retrying -> "Retrying: ${stage.reason}" to true
-        is ProvisioningStage.Succeeded -> "Provisioned: ${stage.component.flattened}" to false
-        is ProvisioningStage.Failed -> {
-            val text = if (stage.factoryResetGuidance) {
-                if (stage.reason.contains("factory reset", ignoreCase = true)) stage.reason
-                else "Factory reset required. ${stage.reason}"
-            } else {
-                "Failed: ${stage.reason}"
-            }
-            text to false
-        }
-        is ProvisioningStage.OwnerRemoved -> "Provision Removed" to false
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (working) CircularProgressIndicator(color = NeumorphicTheme.colors.accent)
-        ResultText(label)
-    }
-}
-
-@Composable
-private fun ResultText(text: String) {
-    NeumorphicSurface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        pressed = true,
-    ) {
-        Text(
-            text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = NeumorphicTheme.colors.textPrimary,
-        )
     }
 }
 
@@ -835,13 +570,3 @@ private fun neumorphicTextFieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = NeumorphicTheme.colors.accent,
     errorCursorColor = NeumorphicTheme.colors.accent,
 )
-
-private fun connectionLabel(state: ConnectionState): String = when (state) {
-    ConnectionState.DISCOVERED -> "Discovered"
-    ConnectionState.PERMISSION_REQUIRED -> "USB permission required"
-    ConnectionState.CONNECTING -> "Connecting"
-    ConnectionState.UNAUTHORIZED -> "Authorization required"
-    ConnectionState.READY -> "Connected and authorized"
-    ConnectionState.DISCONNECTED -> "Disconnected"
-    ConnectionState.FAILED -> "Connection failed"
-}

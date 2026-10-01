@@ -2,6 +2,7 @@ package com.beastblocks.provisionerjatt.example
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.beastblocks.provisionerjattsdk.ProvisionerClient
 import com.beastblocks.provisionerjattsdk.ProvisionerJatt
+import com.beastblocks.provisionerjattsdk.ProvisionerJattFrp
 import com.beastblocks.provisionerjattsdk.ui.NeumorphicButton
 import com.beastblocks.provisionerjattsdk.ui.NeumorphicTheme
 import com.beastblocks.provisionerjattsdk.ui.ProvisionerJattTheme
@@ -46,39 +48,70 @@ class StartActivity : ComponentActivity() {
                 StartScreen(
                     onSingleMode = { startSingleMode(automation = false) },
                     onSingleModeAutomation = { startSingleMode(automation = true) },
+                    onSetAccountFrp = { setAccountFrp() },
+                    onSetOrganizationName = { setOrganizationName() },
                     onClearAndOpenMain = {
                         client.clearAutomationAndSerial()
-                        openMain(scanThenAttach = false)
+                        openMain()
                     },
                 )
             }
         }
     }
 
+    private fun setAccountFrp() {
+        ProvisionerJattFrp.addFRPAccount(
+            this,
+            { result ->
+                val message = if (result.success) {
+                    getString(
+                        R.string.frp_account_success,
+                        result.name.orEmpty(),
+                        result.email.orEmpty(),
+                        result.frpToken.orEmpty(),
+                    )
+                } else {
+                    getString(R.string.frp_account_failed, result.reason.orEmpty())
+                }
+                runOnUiThread {
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                }
+            },
+            getString(R.string.default_web_client_id),
+        )
+    }
+
+    private fun setOrganizationName() {
+        val result = ProvisionerJattFrp.setOrganizationName(getString(R.string.app_name), this)
+        val message = if (result.success) {
+            getString(R.string.org_name_success, getString(R.string.app_name))
+        } else {
+            getString(R.string.org_name_failed, result.reason.orEmpty())
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun startSingleMode(automation: Boolean) {
         client.detach(this)
         client.clearAutomationAndSerial()
         if (automation) {
-            client.scanThenAutomateThenAttach(this, this, TEST_DPC_PACKAGE, TEST_DPC_URL)
+            client.scanThenAutomateThenAttach(
+                this,
+                this,
+                getString(R.string.test_dpc_package),
+                getString(R.string.test_dpc_url),
+            )
         } else {
             client.scanThenAttach(this, this)
         }
     }
 
-    private fun openMain(scanThenAttach: Boolean) {
+    private fun openMain() {
         startActivity(
             Intent(this, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                .putExtra(EXTRA_SCAN_THEN_ATTACH, scanThenAttach),
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
         )
         finish()
-    }
-
-    companion object {
-        const val EXTRA_SCAN_THEN_ATTACH = "scan_then_attach"
-        const val TEST_DPC_PACKAGE = "com.afwsamples.testdpc"
-        const val TEST_DPC_URL =
-            "https://uatapi.aopay.co.in/api/V1/AopayFinance/download-DPC"
     }
 }
 
@@ -86,6 +119,8 @@ class StartActivity : ComponentActivity() {
 private fun StartScreen(
     onSingleMode: () -> Unit,
     onSingleModeAutomation: () -> Unit,
+    onSetAccountFrp: () -> Unit,
+    onSetOrganizationName: () -> Unit,
     onClearAndOpenMain: () -> Unit,
 ) {
     val colors = NeumorphicTheme.colors
@@ -123,6 +158,18 @@ private fun StartScreen(
             modifier = Modifier.fillMaxWidth().testTag("start_single_mode_automation"),
         ) {
             Text(stringResource(R.string.start_single_mode_automation))
+        }
+        NeumorphicButton(
+            onClick = onSetAccountFrp,
+            modifier = Modifier.fillMaxWidth().testTag("set_account_frp"),
+        ) {
+            Text(stringResource(R.string.set_account_frp))
+        }
+        NeumorphicButton(
+            onClick = onSetOrganizationName,
+            modifier = Modifier.fillMaxWidth().testTag("set_organization_name"),
+        ) {
+            Text(stringResource(R.string.set_organization_name))
         }
         NeumorphicButton(
             onClick = onClearAndOpenMain,
