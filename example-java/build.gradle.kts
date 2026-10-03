@@ -11,7 +11,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 5
-        versionName = "1.2.2"
+        versionName = "1.2.3"
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
         }
@@ -34,6 +34,6 @@ android {
 }
 
 dependencies {
-    implementation("com.beastblocks:provisioner-jatt:1.2.2")
+    implementation("com.beastblocks:provisioner-jatt:1.2.3")
     implementation("androidx.activity:activity:1.8.0")
 }
