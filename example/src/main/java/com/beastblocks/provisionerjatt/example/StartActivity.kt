@@ -92,7 +92,7 @@ class StartActivity : ComponentActivity() {
     }
 
     private fun startSingleMode(automation: Boolean) {
-        client.detach(this)
+        if (::client.isInitialized) client.detach(this)
         client.clearAutomationAndSerial()
         if (automation) {
             client.scanThenAutomateThenAttach(

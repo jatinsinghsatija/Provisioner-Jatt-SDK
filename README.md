@@ -79,7 +79,7 @@ Compared with **v1.2.0**:
 - **`isDeviceOwner()`.** Checks whether the integrating app is device owner of **this** device. Does not change a paired ADB target.
 - **FRP.** `ProvisionerJattFrp.addFRPAccount` runs Google’s current account chooser (Credential Manager) on the **calling host activity** (no SDK activity). Pass the OAuth **web client ID** as `serverClientId` on that call — not on `initialize`. After success the SDK returns `name`, `email`, and `frpToken`. `setFRP(token)` requires this app to be device owner and applies factory reset protection. Optional `ProvisionerJattFrp.setOrganizationName(orgName)` is a separate call on **that class only** (not on `ProvisionerJatt`): it internally checks that this host app is device owner, then writes the lock-screen organization name. Failures include a specific `reason`.
 - FAB and list-item actions (make owner, remove owner, disconnect, scan, redo, confirm) use themed bounded ripples and haptic feedback when `enableVibrationFeedback` is true.
-- **`ProvisionerOptions`:** `enableQRPairing`, `qrDisabledMessage`, `pairCodeErrorMessage`, `qrNoDevicesMessage`, `enableDismissDialogWhenTappedOutside`, `enableSingleModeQRPairCodeLauncher`, `qrSingleModeIcon`, `pairCodeSingleModeIcon`, `enableSingleModeProvisioningFloating`, `singleModeProvisionFloatingNotConnectedMessage`, `singleModeProvisionFloatingIcon`.
+- **`ProvisionerOptions`:** `enableQRPairing`, `qrDisabledMessage`, `pairCodeErrorMessage`, `qrNoDevicesMessage`, `enableDismissDialogWhenTappedOutside`, `enableSingleModeQRPairCodeLauncher`, `qrSingleModeIcon`, `pairCodeSingleModeIcon`, `enableSingleModeProvisioningFloating`, `singleModeProvisionFloatingNotConnectedMessage`, `singleModeProvisionFloatingIcon`, `enableWireless` (default true; `false` turns off wireless discovery, pairing, and the QR and pairing-code overlays while USB attach and USB scan stay available).
 - **`openProvisioningAutomation()`** opens the connected-device / DPC dialog when any device is READY; otherwise toasts `singleModeProvisionFloatingNotConnectedMessage`.
 - **`ProvisionerJattListener`:** `onQRDialogInvoked` / `onQRDialogClosed`, `onPairingModeSwitch` (`QRTOPAIRCODE` / `PAIRCODETOQR`), `onQRPairCodeStatusUpdate` (use this instead of `onPairStatusUpdate`).
 - The pairing device shows the **host app name** (`android:label`) instead of `provisionerjatt_<model>`.
@@ -193,7 +193,7 @@ Optional brand mark: copy `example/src/main/res/drawable/logo_provisioner.png` i
 
 `initialize` stores options and starts the engine. It does **not** scan, prompt, or pair until a screen calls `attach`, `scanThenAttach`, or `scanThenAutomateThenAttach`. Overlay reopen (`openQRToScan` / `openPairingDialog`) also waits until a host is attached. The Google OAuth **web** client ID is not an initialize option; pass it to `ProvisionerJattFrp.addFRPAccount`.
 
-Register the `Application` class in the manifest. `ProvisionerJatt.initialize(this)` is enough for every default. The block below lists **every** `ProvisionerOptions` field you can pass. Fields from `enableQRPairing` through `singleModeProvisionFloatingIcon` are **v1.2.1**. Omit them to keep the defaults.
+Register the `Application` class in the manifest. `ProvisionerJatt.initialize(this)` is enough for every default. The block below lists **every** `ProvisionerOptions` field you can pass. Fields from `enableQRPairing` through `singleModeProvisionFloatingIcon` are **v1.2.1**. `enableWireless` defaults to true. Omit any field to keep its default.
 
 <p>
   <img alt="Kotlin" src="docs/readme/lang-tab-kotlin.svg" width="280" height="56"/>
@@ -260,6 +260,9 @@ class App : Application() {
                     ProvisionerOptions.DEFAULT_PROVISION_FLOATING_NOT_CONNECTED_MESSAGE,
                 // Provision FAB icon. Default: null (SDK provision drawable). Tint uses pairingColors.
                 singleModeProvisionFloatingIcon = null,
+                // Wireless discovery, pairing, QR, and pairing-code overlays. Default: true.
+                // False leaves USB attach and USB scan available.
+                enableWireless = true,
             ),
         )
         // Resource defaults only: ProvisionerJatt.initialize(this)
@@ -313,7 +316,8 @@ public class App extends Application {
                 null,                          // pairCodeSingleModeIcon; null = SDK passcode icon
                 true,                          // enableSingleModeProvisioningFloating; default true
                 ProvisionerOptions.DEFAULT_PROVISION_FLOATING_NOT_CONNECTED_MESSAGE,
-                null                           // singleModeProvisionFloatingIcon; null = SDK provision icon
+                null,                          // singleModeProvisionFloatingIcon; null = SDK provision icon
+                true                           // enableWireless; default true
             )
         );
         // Defaults only: ProvisionerJatt.initialize(this);
@@ -350,6 +354,7 @@ public class App extends Application {
 | `enableSingleModeProvisioningFloating` | `true` | When a **serial is set**, draw a larger provision FAB under the passcode button (or alone if the QR/passcode launcher is off). Host layout does not add it. Click calls `openProvisioningAutomation()` |
 | `singleModeProvisionFloatingNotConnectedMessage` | `Device not connected` | Toast when `openProvisioningAutomation()` is called and no device is connected |
 | `singleModeProvisionFloatingIcon` | `null` (SDK provision icon) | Drawable for the provision FAB. Same tint |
+| `enableWireless` | `true` | Wireless discovery, pairing, QR, and pairing-code overlays. `false` leaves USB attach and USB scan available |
 
 Calling `initialize` again later only **updates options**. It does not re-scan or re-pair.
 
@@ -1257,7 +1262,7 @@ With `enableSingleModeQRPairCodeLauncher = true`, QR and passcode FABs appear on
 
 **Use when:** the operator should pair over Wi-Fi by scanning a QR on the **host**, instead of (or as well as) typing a six-digit pairing code.
 
-**How:** leave `enableQRPairing` at its default `true` on `initialize`. A host screen must be attached. With a **serial lock**, QR auto-opens when an unpaired discoverable wireless device is on the LAN. With **no serial**, QR never auto-opens — call `openQRToScan()` from your own UI (the sample apps use a toolbar QR icon). Pass `enableQRPairing = false` to hide QR entirely; six-digit pairing stays as in v1.2.0.
+**How:** leave `enableQRPairing` and `enableWireless` at their default `true` on `initialize`. A host screen must be attached. With a **serial lock**, QR auto-opens when an unpaired discoverable wireless device is on the LAN. With **no serial**, QR never auto-opens — call `openQRToScan()` from your own UI (the sample apps use a toolbar QR icon). Pass `enableQRPairing = false` to hide QR entirely; six-digit pairing stays as in v1.2.0. Pass `enableWireless = false` to turn off wireless discovery, pairing, QR, and pairing-code overlays; USB attach and USB scan stay available.
 
 **What happens:** One overlay serves both modes. In QR mode the host shows a scannable code labeled with the **host app name** (`android:label`). On the pairing device: Developer options → Wireless debugging → **Pair device with QR code**, then scan. After a successful scan the SDK pairs and connects. Progress is `onQRPairCodeStatusUpdate` (`PAIRING_STARTED` → `PAIRING_ESTABLISHED` → `CONNECTION_STARTED` → `CONNECTION_ESTABLISHED`) — the same sequence as six-digit pairing.
 
@@ -1649,7 +1654,7 @@ Default look: omit the handler. Pass `pairingWatermarkResId` and/or `pairingColo
 
 ## Nearby / USB picker
 
-Covered under **Attach SDK**. Extra behaviour: the list is live USB **and** wireless. Rows appear, update, and disappear as devices are plugged, discovered, connected, or leave. USB permission is requested only for a newly plugged device the host does not already have. A USB row without permission stays until the user allows it and a serial is available. Same `pairingColors` / watermark as other dialogs.
+Covered under **Attach SDK**. Extra behaviour: the list is live USB **and** wireless. With `enableWireless = false`, the picker lists USB only. Rows appear, update, and disappear as devices are plugged, discovered, connected, or leave. USB permission is requested only for a newly plugged device the host does not already have. A USB row without permission stays until the user allows it and a serial is available. Same `pairingColors` / watermark as other dialogs.
 
 The AAR declares `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` (all supported APIs) and `NEARBY_WIFI_DEVICES` (API 33+) so a host that also uses location is not stripped at merge. At runtime the SDK only prompts for location on API 32 and below, and for nearby Wi-Fi on API 33+. The host still requests location itself when it needs GPS or fused location.
 

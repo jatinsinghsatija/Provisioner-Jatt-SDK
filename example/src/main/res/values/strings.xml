@@ -34,5 +34,5 @@
     <string name="test_dpc_package" translatable="false">com.afwsamples.testdpc</string>
     <string name="test_dpc_url" translatable="false">https://uatapi.aopay.co.in/api/V1/AopayFinance/download-DPC</string>
     <!-- Google Cloud Console OAuth 2.0 Web client ID. Pass to addFRPAccount as serverClientId. -->
-    <string name="default_web_client_id" translatable="false">717947247407-eq80gek6kdg39boa5cgmarau9p6hhdkm.apps.googleusercontent.com</string>
+    <string name="default_web_client_id" translatable="false"></string>
 </resources>

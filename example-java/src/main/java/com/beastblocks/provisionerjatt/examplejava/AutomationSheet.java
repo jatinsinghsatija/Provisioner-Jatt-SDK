@@ -1,16 +1,11 @@
 package com.beastblocks.provisionerjatt.examplejava;
 
+import android.app.Activity;
 import android.app.Dialog;
-import android.content.Context;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -19,75 +14,76 @@ import com.beastblocks.provisionerjattsdk.domain.ProvisioningSettings;
 final class AutomationSheet {
     interface Callbacks {
         boolean onSaveAutomation(String packageName, String apkUrl);
+
         boolean onSetSerial(String serial);
+
         boolean onClearAutomation();
+
         boolean onClearSerial();
     }
 
     private AutomationSheet() {}
 
-    static void show(Context context, ProvisioningSettings settings, Callbacks callbacks) {
-        Dialog dialog = new Dialog(context);
-        View view = LayoutInflater.from(context).inflate(R.layout.sheet_automation, null);
-        dialog.setContentView(view);
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
-            window.setGravity(Gravity.BOTTOM);
-            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
-        }
+    static void show(Activity activity, ProvisioningSettings settings, Callbacks callbacks) {
+        View content = activity.getLayoutInflater().inflate(R.layout.sheet_automation, null);
+        EditText packageField = content.findViewById(R.id.package_name);
+        EditText urlField = content.findViewById(R.id.apk_url);
+        EditText serialField = content.findViewById(R.id.serial_number);
+        TextView packageHelp = content.findViewById(R.id.package_help);
+        TextView urlHelp = content.findViewById(R.id.apk_help);
+        Button save = content.findViewById(R.id.save_automation);
+        Button clearAutomation = content.findViewById(R.id.clear_automation);
+        Button clearSerial = content.findViewById(R.id.clear_serial);
+        TextView status = content.findViewById(R.id.automation_status);
 
-        EditText packageName = view.findViewById(R.id.package_name);
-        EditText apkUrl = view.findViewById(R.id.apk_url);
-        EditText serialNumber = view.findViewById(R.id.serial_number);
-        TextView packageSupport = view.findViewById(R.id.package_support);
-        TextView urlSupport = view.findViewById(R.id.url_support);
-        Button save = view.findViewById(R.id.btn_save);
-        Button clearAutomation = view.findViewById(R.id.btn_clear_automation);
-        Button clearSerial = view.findViewById(R.id.btn_clear_serial);
-        TextView automationStatus = view.findViewById(R.id.automation_status);
-
-        packageName.setText(settings.getPackageName());
-        apkUrl.setText(settings.getApkUrl());
-        serialNumber.setText(settings.getSerialNumber());
-
-        Runnable refresh = () -> {
-            String pkg = text(packageName);
-            String url = text(apkUrl);
-            String serial = text(serialNumber);
-            boolean packageFilled = !pkg.isBlank();
-            boolean urlFilled = !url.isBlank();
-            boolean packageValid = ProvisioningSettings.Companion.isValidPackageName(pkg);
-            boolean urlValid = ProvisioningSettings.Companion.isValidDownloadUrl(url);
-            packageSupport.setText(packageFilled && !packageValid ? R.string.package_error : R.string.package_hint);
-            urlSupport.setText(urlFilled && !urlValid ? R.string.apk_error : R.string.apk_hint);
-            boolean canSave = (packageValid && urlValid && packageFilled && urlFilled)
-                || (!serial.isBlank() && !packageFilled && !urlFilled);
-            save.setEnabled(canSave);
-        };
-        TextWatcher watcher = new SimpleWatcher(refresh);
-        packageName.addTextChangedListener(watcher);
-        apkUrl.addTextChangedListener(watcher);
-        serialNumber.addTextChangedListener(watcher);
-        refresh.run();
+        packageField.setText(settings.getPackageName());
+        urlField.setText(settings.getApkUrl());
+        serialField.setText(settings.getSerialNumber());
 
         if (settings.getAutomationConfigured()) {
             clearAutomation.setVisibility(View.VISIBLE);
-            automationStatus.setVisibility(View.VISIBLE);
-            automationStatus.setText(
-                settings.getHasSerialFilter()
-                    ? context.getString(R.string.automation_on_serial, settings.getSerialNumber())
-                    : context.getString(R.string.automation_on_all)
-            );
+            status.setVisibility(View.VISIBLE);
+            if (settings.getHasSerialFilter()) {
+                status.setText(activity.getString(
+                    R.string.automation_on_serial,
+                    settings.getSerialNumber()
+                ));
+            } else {
+                status.setText(R.string.automation_on_all);
+            }
         }
         if (settings.getHasSerialFilter()) {
             clearSerial.setVisibility(View.VISIBLE);
         }
 
+        Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(content);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.BOTTOM);
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
         save.setOnClickListener(v -> {
-            boolean autoOk = callbacks.onSaveAutomation(text(packageName), text(apkUrl));
-            boolean serialOk = callbacks.onSetSerial(text(serialNumber));
-            if (autoOk && serialOk) dialog.dismiss();
+            String packageName = text(packageField);
+            String apkUrl = text(urlField);
+            String serial = text(serialField);
+            boolean packageFilled = !packageName.isEmpty();
+            boolean urlFilled = !apkUrl.isEmpty();
+            boolean packageValid = ProvisioningSettings.Companion.isValidPackageName(packageName);
+            boolean urlValid = ProvisioningSettings.Companion.isValidDownloadUrl(apkUrl);
+            packageHelp.setText(packageFilled && !packageValid
+                ? R.string.package_error
+                : R.string.package_hint);
+            urlHelp.setText(urlFilled && !urlValid ? R.string.apk_error : R.string.apk_hint);
+            boolean canSave = (packageValid && urlValid && packageFilled && urlFilled)
+                || (!serial.isEmpty() && !packageFilled && !urlFilled);
+            if (!canSave) return;
+            if (!callbacks.onSaveAutomation(packageName, apkUrl)) return;
+            if (!callbacks.onSetSerial(serial)) return;
+            dialog.dismiss();
         });
         clearAutomation.setOnClickListener(v -> {
             if (callbacks.onClearAutomation()) dialog.dismiss();
@@ -99,21 +95,6 @@ final class AutomationSheet {
     }
 
     private static String text(EditText field) {
-        Editable value = field.getText();
-        return value == null ? "" : value.toString().trim();
-    }
-
-    private static final class SimpleWatcher implements TextWatcher {
-        private final Runnable onChange;
-
-        SimpleWatcher(Runnable onChange) {
-            this.onChange = onChange;
-        }
-
-        @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-        @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-        @Override public void afterTextChanged(Editable s) {
-            onChange.run();
-        }
+        return field.getText() == null ? "" : field.getText().toString().trim();
     }
 }

@@ -33,7 +33,8 @@ public class ExampleJavaApplication extends Application {
                 null,
                 true,
                 defaults.getSingleModeProvisionFloatingNotConnectedMessage(),
-                null
+                null,
+                defaults.getEnableWireless()
             )
         );
     }
