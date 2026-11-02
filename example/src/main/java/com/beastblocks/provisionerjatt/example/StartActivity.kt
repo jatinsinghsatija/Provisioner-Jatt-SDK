@@ -74,7 +74,7 @@ class StartActivity : ComponentActivity() {
                     getString(R.string.frp_account_failed, result.reason.orEmpty())
                 }
                 runOnUiThread {
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    if (!licenseNotice(message)) Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                 }
             },
             getString(R.string.default_web_client_id),
@@ -88,8 +88,13 @@ class StartActivity : ComponentActivity() {
         } else {
             getString(R.string.org_name_failed, result.reason.orEmpty())
         }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        if (!licenseNotice(message)) Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
+
+    private fun licenseNotice(message: String): Boolean =
+        message.isEmpty() ||
+            message == "SDK is not available" ||
+            message == "Debug trials has been finished for today and will continue tomorrow"
 
     private fun startSingleMode(automation: Boolean) {
         if (::client.isInitialized) client.detach(this)

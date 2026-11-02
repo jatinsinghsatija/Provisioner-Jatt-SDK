@@ -47,7 +47,9 @@ public class StartActivity extends ComponentActivity {
                     result.getReason() == null ? "" : result.getReason()
                 );
             }
-            runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> {
+                if (!licenseNotice(message)) Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            });
         }, getString(R.string.default_web_client_id));
     }
 
@@ -63,7 +65,14 @@ public class StartActivity extends ComponentActivity {
                 result.getReason() == null ? "" : result.getReason()
             );
         }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        if (!licenseNotice(message)) Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    private boolean licenseNotice(String message) {
+        return message == null
+            || message.isEmpty()
+            || "SDK is not available".equals(message)
+            || "Debug trials has been finished for today and will continue tomorrow".equals(message);
     }
 
     private void startSingleMode(boolean automation) {
